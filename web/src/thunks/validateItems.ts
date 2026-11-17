@@ -8,9 +8,13 @@ export const validateMove = createAsyncThunk(
     data: {
       fromSlot: number;
       fromType: string;
-      toSlot: number;
+      toSlot?: number;
       toType: string;
       count: number;
+      // klsh: grid placement (empty place) instead of a target slot
+      toX?: number;
+      toY?: number;
+      rotated?: boolean;
     },
     { rejectWithValue, dispatch }
   ) => {

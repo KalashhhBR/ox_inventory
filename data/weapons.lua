@@ -3,6 +3,7 @@ return {
 		['WEAPON_BATTLERIFLE'] = {
 			label = 'Battle Rifle',
 			weight = 3300,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle2',
 		},
@@ -10,6 +11,7 @@ return {
 		['WEAPON_SNOWLAUNCHER'] = {
 			label = 'Snowball Launcher',
 			weight = 1000,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'WEAPON_SNOWBALL',
 		},
@@ -17,6 +19,7 @@ return {
 		['WEAPON_TECPISTOL'] = {
 			label = 'Tactical SMG',
 			weight = 1500,
+			size = { 2, 2 },
 			durability = 0.075,
 			ammoname = 'ammo-9',
 		},
@@ -24,6 +27,7 @@ return {
 		['WEAPON_ADVANCEDRIFLE'] = {
 			label = 'Advanced Rifle',
 			weight = 3100,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle',
 		},
@@ -31,6 +35,7 @@ return {
 		['WEAPON_APPISTOL'] = {
 			label = 'AP Pistol',
 			weight = 1400,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-9',
 		},
@@ -38,6 +43,7 @@ return {
 		['WEAPON_ASSAULTRIFLE'] = {
 			label = 'Assault Rifle',
 			weight = 4500,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle2',
 		},
@@ -45,6 +51,7 @@ return {
 		['WEAPON_ASSAULTRIFLE_MK2'] = {
 			label = 'Assault Rifle MK2',
 			weight = 2950,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle2',
 		},
@@ -52,6 +59,7 @@ return {
 		['WEAPON_ASSAULTSHOTGUN'] = {
 			label = 'Assault Shotgun',
 			weight = 5200,
+			size = { 4, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-shotgun'
 		},
@@ -59,6 +67,7 @@ return {
 		['WEAPON_ASSAULTSMG'] = {
 			label = 'Assault SMG',
 			weight = 2900,
+			size = { 3, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-rifle'
 		},
@@ -66,30 +75,35 @@ return {
 		['WEAPON_BALL'] = {
 			label = 'Ball',
 			weight = 149,
+			maxStack = 5,
 			throwable = true,
 		},
 
 		['WEAPON_BAT'] = {
 			label = 'Bat',
 			weight = 1134,
+			size = { 4, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_BATTLEAXE'] = {
 			label = 'Battle Axe',
 			weight = 6500,
+			size = { 3, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_BOTTLE'] = {
 			label = 'Bottle',
 			weight = 350,
+			size = { 1, 2 },
 			durability = 0.1,
 		},
 
 		['WEAPON_BULLPUPRIFLE'] = {
 			label = 'Bullpup Rifle',
 			weight = 2900,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -97,6 +111,7 @@ return {
 		['WEAPON_BULLPUPRIFLE_MK2'] = {
 			label = 'Bullpup Rifle MK2',
 			weight = 2900,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -104,6 +119,7 @@ return {
 		['WEAPON_BULLPUPSHOTGUN'] = {
 			label = 'Bullpup Shotgun',
 			weight = 3100,
+			size = { 4, 2 },
 			durability = 0.2,
 			ammoname = 'ammo-shotgun'
 		},
@@ -111,12 +127,14 @@ return {
 		['WEAPON_BZGAS'] = {
 			label = 'BZ Gas',
 			weight = 600,
+			maxStack = 3,
 			throwable = true,
 		},
 
 		['WEAPON_CARBINERIFLE'] = {
 			label = 'Carbine Rifle',
 			weight = 3100,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -124,6 +142,7 @@ return {
 		['WEAPON_CARBINERIFLE_MK2'] = {
 			label = 'Carbine Rifle MK2',
 			weight = 3000,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -131,6 +150,7 @@ return {
 		['WEAPON_CERAMICPISTOL'] = {
 			label = 'Ceramic Pistol',
 			weight = 800,
+			size = { 2, 1 },
 			durability = 0.2,
 			ammoname = 'ammo-9'
 		},
@@ -138,6 +158,7 @@ return {
 		['WEAPON_PISTOLXM3'] = {
 			label = 'WM 29 Pistol',
 			weight = 969,
+			size = { 2, 1 },
 			durability = 0.2,
 			ammoname = 'ammo-9'
 		},
@@ -145,6 +166,7 @@ return {
 		['WEAPON_COMBATMG'] = {
 			label = 'Combat MG',
 			weight = 7500,
+			size = { 5, 2 },
 			durability = 0.02,
 			ammoname = 'ammo-rifle'
 		},
@@ -152,6 +174,7 @@ return {
 		['WEAPON_COMBATMG_MK2'] = {
 			label = 'Combat MG MK2',
 			weight = 8000,
+			size = { 5, 2 },
 			durability = 0.02,
 			ammoname = 'ammo-rifle2'
 		},
@@ -159,6 +182,7 @@ return {
 		['WEAPON_COMBATPDW'] = {
 			label = 'Combat PDW',
 			weight = 2300,
+			size = { 3, 2 },
 			durability = 0.1,
 			ammoname = 'ammo-9'
 		},
@@ -166,6 +190,7 @@ return {
 		['WEAPON_COMBATPISTOL'] = {
 			label = 'Combat Pistol',
 			weight = 785,
+			size = { 2, 1 },
 			durability = 0.2,
 			ammoname = 'ammo-9'
 		},
@@ -173,6 +198,7 @@ return {
 		['WEAPON_COMBATSHOTGUN'] = {
 			label = 'Combat Shotgun',
 			weight = 4400,
+			size = { 4, 2 },
 			durability = 0.2,
 			ammoname = 'ammo-shotgun'
 		},
@@ -180,6 +206,7 @@ return {
 		['WEAPON_COMPACTLAUNCHER'] = {
 			label = 'Compact Grenade Launcher',
 			weight = 2500,
+			size = { 3, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-grenade'
 		},
@@ -187,6 +214,7 @@ return {
 		['WEAPON_COMPACTRIFLE'] = {
 			label = 'Compact Rifle',
 			weight = 3600,
+			size = { 3, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-rifle2'
 		},
@@ -194,18 +222,21 @@ return {
 		['WEAPON_CROWBAR'] = {
 			label = 'Crowbar',
 			weight = 2500,
+			size = { 3, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_DAGGER'] = {
 			label = 'Dagger',
 			weight = 800,
+			size = { 2, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_DBSHOTGUN'] = {
 			label = 'Double Barrel Shotgun',
 			weight = 3175,
+			size = { 3, 1 },
 			durability = 0.4,
 			ammoname = 'ammo-shotgun'
 		},
@@ -213,6 +244,7 @@ return {
 		['WEAPON_DOUBLEACTION'] = {
 			label = 'Double Action Revolver',
 			weight = 940,
+			size = { 2, 1 },
 			durability = 0.2,
 			ammoname = 'ammo-38'
 		},
@@ -220,6 +252,7 @@ return {
 		['WEAPON_EMPLAUNCHER'] = {
 			label = 'Compact EMP Launcher',
 			weight = 2750,
+			size = { 4, 2 },
 			durability = 0.2,
 			ammoname = 'ammo-emp'
 		},
@@ -227,12 +260,14 @@ return {
 		['WEAPON_FIREEXTINGUISHER'] = {
 			label = 'Fire Extinguisher',
 			weight = 8616,
+			size = { 2, 3 },
             durability = 0.006
 		},
 
 		['WEAPON_FIREWORK'] = {
 			label = 'Firework Launcher',
 			weight = 1000,
+			size = { 5, 2 },
 			durability = 0.5,
 			ammoname = 'ammo-firework'
 		},
@@ -240,12 +275,14 @@ return {
 		['WEAPON_FLARE'] = {
 			label = 'Flare',
 			weight = 250,
+			maxStack = 5,
 			throwable = true,
 		},
 
 		['WEAPON_FLAREGUN'] = {
 			label = 'Flare Gun',
 			weight = 1000,
+			size = { 2, 1 },
 			durability = 0.5,
 			ammoname = 'ammo-flare'
 		},
@@ -253,24 +290,28 @@ return {
 		['WEAPON_FLASHLIGHT'] = {
 			label = 'Flashlight',
 			weight = 125,
+			size = { 2, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_GOLFCLUB'] = {
 			label = 'Golf Club',
 			weight = 330,
+			size = { 4, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_GRENADE'] = {
 			label = 'Grenade',
 			weight = 400,
+			maxStack = 3,
 			throwable = true,
 		},
 
 		['WEAPON_GRENADELAUNCHER'] = {
 			label = 'Grenade Launcher',
 			weight = 6500,
+			size = { 4, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-grenade'
 		},
@@ -278,6 +319,7 @@ return {
 		['WEAPON_GUSENBERG'] = {
 			label = 'Gusenberg',
 			weight = 4900,
+			size = { 4, 2 },
 			durability = 0.04,
 			ammoname = 'ammo-45'
 		},
@@ -285,18 +327,21 @@ return {
 		['WEAPON_HAMMER'] = {
 			label = 'Hammer',
 			weight = 1200,
+			size = { 2, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_HATCHET'] = {
 			label = 'Hatchet',
 			weight = 1000,
+			size = { 3, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_HEAVYRIFLE'] = {
 			label = 'Heavy Rifle',
 			weight = 3300,
+			size = { 4, 2 },
 			durability = 0.2,
 			ammoname = 'ammo-rifle'
 		},
@@ -304,16 +349,19 @@ return {
 		['WEAPON_HAZARDCAN'] = {
 			label = 'Hazard Can',
 			weight = 12000,
+			size = { 2, 3 },
 		},
 
 		['WEAPON_METALDETECTOR'] = {
 			label = 'Metal Detector',
 			weight = 1200,
+			size = { 3, 2 },
 		},
 
 		['WEAPON_HOMINGLAUNCHER'] = {
 			label = 'Homing Launcher',
 			weight = 10000,
+			size = { 5, 2 },
 			durability = 0.6,
 			ammoname = 'ammo-rocket'
 		},
@@ -321,11 +369,13 @@ return {
 		['WEAPON_FERTILIZERCAN'] = {
 			label = 'Fertilizer Can',
 			weight = 12000,
+			size = { 2, 3 },
 		},
 
 		['WEAPON_HEAVYPISTOL'] = {
 			label = 'Heavy Pistol',
 			weight = 1100,
+			size = { 2, 1 },
 			durability = 0.2,
 			ammoname = 'ammo-45'
 		},
@@ -333,6 +383,7 @@ return {
 		['WEAPON_HEAVYSHOTGUN'] = {
 			label = 'Heavy Shotgun',
 			weight = 3600,
+			size = { 4, 2 },
 			durability = 0.1,
 			ammoname = 'ammo-shotgun'
 		},
@@ -340,6 +391,7 @@ return {
 		['WEAPON_HEAVYSNIPER'] = {
 			label = 'Heavy Sniper',
 			weight = 12700,
+			size = { 5, 2 },
 			durability = 0.5,
 			ammoname = 'ammo-heavysniper'
 		},
@@ -347,6 +399,7 @@ return {
 		['WEAPON_HEAVYSNIPER_MK2'] = {
 			label = 'Heavy Sniper MK2',
 			weight = 14000,
+			size = { 5, 2 },
 			durability = 0.5,
 			ammoname = 'ammo-heavysniper'
 		},
@@ -354,6 +407,7 @@ return {
 		['WEAPON_KNIFE'] = {
 			label = 'Knife',
 			weight = 300,
+			size = { 2, 1 },
 			durability = 0.1,
 		},
 
@@ -366,12 +420,14 @@ return {
 		['WEAPON_MACHETE'] = {
 			label = 'Machete',
 			weight = 1000,
+			size = { 3, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_MACHINEPISTOL'] = {
 			label = 'Machine Pistol',
 			weight = 1400,
+			size = { 2, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-9'
 		},
@@ -379,6 +435,7 @@ return {
 		['WEAPON_MARKSMANPISTOL'] = {
 			label = 'Marksman Pistol',
 			weight = 1588,
+			size = { 2, 1 },
 			durability = 0.5,
 			ammoname = 'ammo-22'
 		},
@@ -386,6 +443,7 @@ return {
 		['WEAPON_MARKSMANRIFLE'] = {
 			label = 'Marksman Rifle',
 			weight = 7500,
+			size = { 5, 2 },
 			durability = 0.4,
 			ammoname = 'ammo-sniper'
 		},
@@ -393,6 +451,7 @@ return {
 		['WEAPON_MARKSMANRIFLE_MK2'] = {
 			label = 'Marksman Rifle MK2',
 			weight = 4000,
+			size = { 5, 2 },
 			durability = 0.4,
 			ammoname = 'ammo-sniper'
 		},
@@ -400,6 +459,7 @@ return {
 		['WEAPON_MG'] = {
 			label = 'Machine Gun',
 			weight = 9000,
+			size = { 5, 2 },
 			durability = 0.02,
 			ammoname = 'ammo-rifle2'
 		},
@@ -407,6 +467,7 @@ return {
 		['WEAPON_MINIGUN'] = {
 			label = 'Minigun',
 			weight = 38500,
+			size = { 5, 3 },
 			durability = 0.1,
 			ammoname = 'ammo-rifle2'
 		},
@@ -414,6 +475,7 @@ return {
 		['WEAPON_MICROSMG'] = {
 			label = 'Micro SMG',
 			weight = 3000,
+			size = { 2, 2 },
 			durability = 0.1,
 			ammoname = 'ammo-45'
 		},
@@ -421,6 +483,7 @@ return {
 		['WEAPON_MILITARYRIFLE'] = {
 			label = 'Military Rifle',
 			weight = 3600,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -428,6 +491,7 @@ return {
 		['WEAPON_MINISMG'] = {
 			label = 'Mini SMG',
 			weight = 1270,
+			size = { 2, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-9'
 		},
@@ -435,12 +499,15 @@ return {
 		['WEAPON_MOLOTOV'] = {
 			label = 'Molotov',
 			weight = 1800,
+			size = { 1, 2 },
+			maxStack = 3,
 			throwable = true,
 		},
 
 		['WEAPON_MUSKET'] = {
 			label = 'Musket',
 			weight = 4500,
+			size = { 5, 2 },
 			durability = 0.5,
 			ammoname = 'ammo-musket'
 		},
@@ -448,6 +515,7 @@ return {
 		['WEAPON_NAVYREVOLVER'] = {
 			label = 'Navy Revolver',
 			weight = 4000,
+			size = { 2, 1 },
 			durability = 0.2,
 			ammoname = 'ammo-44'
 		},
@@ -455,17 +523,20 @@ return {
 		['WEAPON_NIGHTSTICK'] = {
 			label = 'Nightstick',
 			weight = 1000,
+			size = { 3, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_PETROLCAN'] = {
 			label = 'Jerry Can',
 			weight = 4000,
+			size = { 2, 3 },
 		},
 
 		['WEAPON_GADGETPISTOL'] = {
 			label = 'Perico Pistol',
 			weight = 1750,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-9'
 		},
@@ -473,12 +544,14 @@ return {
 		['WEAPON_PIPEBOMB'] = {
 			label = 'Pipe Bomb',
 			weight = 1800,
+			maxStack = 3,
 			throwable = true,
 		},
 
 		['WEAPON_PISTOL'] = {
 			label = 'Pistol',
 			weight = 1130,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-9',
 		},
@@ -486,6 +559,7 @@ return {
 		['WEAPON_PISTOL50'] = {
 			label = 'Pistol .50',
 			weight = 2000,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-50'
 		},
@@ -493,6 +567,7 @@ return {
 		['WEAPON_PISTOL_MK2'] = {
 			label = 'Pistol MK2',
 			weight = 1000,
+			size = { 2, 1 },
 			durability = 0.5,
 			ammoname = 'ammo-9'
 		},
@@ -500,24 +575,28 @@ return {
 		['WEAPON_POOLCUE'] = {
 			label = 'Pool Cue',
 			weight = 146,
+			size = { 5, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_CANDYCANE'] = {
 			label = 'Candy Cane',
 			weight = 85,
+			size = { 3, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_PROXMINE'] = {
 			label = 'Proximity Mine',
 			weight = 2500,
+			maxStack = 3,
 			throwable = true,
 		},
 
 		['WEAPON_PUMPSHOTGUN'] = {
 			label = 'Pump Shotgun',
 			weight = 3400,
+			size = { 4, 2 },
 			durability = 0.1,
 			ammoname = 'ammo-shotgun'
 		},
@@ -525,6 +604,7 @@ return {
 		['WEAPON_PUMPSHOTGUN_MK2'] = {
 			label = 'Pump Shotgun MK2',
 			weight = 3200,
+			size = { 4, 2 },
 			durability = 0.1,
 			ammoname = 'ammo-shotgun'
 		},
@@ -532,6 +612,7 @@ return {
 		['WEAPON_RAILGUN'] = {
 			label = 'Railgun',
 			weight = 3570,
+			size = { 5, 2 },
 			durability = 0.5,
 			ammoname = 'ammo-railgun'
 		},
@@ -539,6 +620,7 @@ return {
 		['WEAPON_RAILGUNXM3'] = {
 			label = 'Railgun XM3',
 			weight = 3570,
+			size = { 5, 2 },
 			durability = 0.5,
 			ammoname = 'ammo-railgun'
 		},
@@ -546,6 +628,7 @@ return {
 		['WEAPON_RAYCARBINE'] = {
 			label = 'Unholy Hellbringer',
 			weight = 3620,
+			size = { 4, 2 },
 			durability = 0.2,
 			ammoname = 'ammo-laser'
 		},
@@ -553,12 +636,14 @@ return {
 		['WEAPON_RAYPISTOL'] = {
 			label = 'Up-n-Atomizer',
 			weight = 1540,
+			size = { 2, 1 },
 			durability = 0.5
 		},
 
 		['WEAPON_REVOLVER'] = {
 			label = 'Revolver',
 			weight = 2260,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-44'
 		},
@@ -566,6 +651,7 @@ return {
 		['WEAPON_REVOLVER_MK2'] = {
 			label = 'Revolver MK2',
 			weight = 2600,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-44'
 		},
@@ -573,6 +659,7 @@ return {
 		['WEAPON_RPG'] = {
 			label = 'RPG',
 			weight = 5000,
+			size = { 5, 2 },
 			durability = 0.3,
 			ammoname = 'ammo-rocket'
 		},
@@ -580,6 +667,7 @@ return {
 		['WEAPON_SAWNOFFSHOTGUN'] = {
 			label = 'Sawn Off Shotgun',
 			weight = 2380,
+			size = { 3, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-shotgun'
 		},
@@ -587,6 +675,7 @@ return {
 		['WEAPON_SMG'] = {
 			label = 'SMG',
 			weight = 3084,
+			size = { 3, 2 },
 			durability = 0.8,
 			ammoname = 'ammo-9'
 		},
@@ -594,6 +683,7 @@ return {
 		['WEAPON_SMG_MK2'] = {
 			label = 'SMG Mk2',
 			weight = 2700,
+			size = { 3, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-9'
 		},
@@ -601,12 +691,14 @@ return {
 		['WEAPON_SMOKEGRENADE'] = {
 			label = 'Smoke Grenade',
 			weight = 600,
+			maxStack = 3,
 			throwable = true,
 		},
 
 		['WEAPON_SNIPERRIFLE'] = {
 			label = 'Sniper Rifle',
 			weight = 5000,
+			size = { 5, 2 },
 			durability = 0.5,
 			ammoname = 'ammo-sniper'
 		},
@@ -614,12 +706,14 @@ return {
 		['WEAPON_SNOWBALL'] = {
 			label = 'Snow Ball',
 			weight = 5,
+			maxStack = 10,
 			throwable = true,
 		},
 
 		['WEAPON_SNSPISTOL'] = {
 			label = 'SNS Pistol',
 			weight = 465,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-45'
 		},
@@ -627,6 +721,7 @@ return {
 		['WEAPON_SNSPISTOL_MK2'] = {
 			label = 'SNS Pistol MK2',
 			weight = 465,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-45'
 		},
@@ -634,6 +729,7 @@ return {
 		['WEAPON_SPECIALCARBINE'] = {
 			label = 'Special Carbine',
 			weight = 3000,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -641,6 +737,7 @@ return {
 		['WEAPON_SPECIALCARBINE_MK2'] = {
 			label = 'Special Carbine MK2',
 			weight = 3370,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -648,24 +745,28 @@ return {
 		['WEAPON_STICKYBOMB'] = {
 			label = 'Sticky Bomb',
 			weight = 1000,
+			maxStack = 3,
 			throwable = true,
 		},
 
 		['WEAPON_STONE_HATCHET'] = {
 			label = 'Stone Hatchet',
 			weight = 800,
+			size = { 3, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_STUNGUN'] = {
 			label = 'Tazer',
 			weight = 227,
+			size = { 2, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_AUTOSHOTGUN'] = {
 			label = 'Sweeper Shotgun',
 			weight = 4400,
+			size = { 3, 2 },
 			durability = 0.05,
 			ammoname = 'ammo-shotgun'
 		},
@@ -680,6 +781,7 @@ return {
 		['WEAPON_VINTAGEPISTOL'] = {
 			label = 'Vintage Pistol',
 			weight = 700,
+			size = { 2, 1 },
 			durability = 0.1,
 			ammoname = 'ammo-9'
 		},
@@ -687,6 +789,7 @@ return {
 		['WEAPON_RAYMINIGUN'] = {
 			label = 'Widowmaker',
 			weight = 7000,
+			size = { 5, 3 },
 			durability = 0.1,
 			ammoname = 'ammo-laser'
 		},
@@ -694,12 +797,14 @@ return {
 		['WEAPON_WRENCH'] = {
 			label = 'Wrench',
 			weight = 2500,
+			size = { 2, 1 },
 			durability = 0.1,
 		},
 
 		['WEAPON_PRECISIONRIFLE'] = {
 			label = 'Precision Rifle',
 			weight = 4800,
+			size = { 5, 2 },
 			durability = 0.4,
 			ammoname = 'ammo-sniper'
 		},
@@ -707,6 +812,7 @@ return {
 		['WEAPON_TACTICALRIFLE'] = {
 			label = 'Tactical Rifle',
 			weight = 3400,
+			size = { 4, 2 },
 			durability = 0.03,
 			ammoname = 'ammo-rifle'
 		},
@@ -714,6 +820,7 @@ return {
 		['WEAPON_TEARGAS'] = {
 			label = 'Tear Gas',
 			weight = 600,
+			maxStack = 3,
 			throwable = true,
 		},
 	},
@@ -738,6 +845,7 @@ return {
 		['at_suppressor_light'] = {
 			label = 'Suppressor',
 			weight = 280,
+			size = { 2, 1 },
 			type = 'muzzle',
 			client = {
                 image = 'at_suppressor.png',
@@ -754,6 +862,7 @@ return {
 		['at_suppressor_heavy'] = {
 			label = 'Tactical Suppressor',
 			weight = 280,
+			size = { 2, 1 },
 			type = 'muzzle',
 			client = {
                 image = 'at_suppressor.png',
@@ -782,6 +891,7 @@ return {
 
 		['at_barrel'] = {
 			label = 'Heavy Barrel',
+			size = { 2, 1 },
 			type = 'barrel',
 			weight = 280,
 			client = {
@@ -801,6 +911,7 @@ return {
 
 		['at_clip_extended_pistol'] = {
 			label = 'Extended Pistol Clip',
+			size = { 1, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -824,6 +935,7 @@ return {
 
 		['at_clip_extended_smg'] = {
 			label = 'Extended SMG Clip',
+			size = { 1, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -843,6 +955,7 @@ return {
 
 		['at_clip_extended_shotgun'] = {
 			label = 'Extended Shotgun Clip',
+			size = { 1, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -857,6 +970,7 @@ return {
 
 		['at_clip_extended_rifle'] = {
 			label = 'Extended Rifle Clip',
+			size = { 1, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -883,6 +997,7 @@ return {
 
 		['at_clip_extended_mg'] = {
 			label = 'Extended MG Clip',
+			size = { 1, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -899,6 +1014,7 @@ return {
 
 		['at_clip_extended_sniper'] = {
 			label = 'Extended Sniper Clip',
+			size = { 1, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -914,6 +1030,7 @@ return {
 
 		['at_clip_drum_smg'] = {
 			label = 'SMG Drum',
+			size = { 2, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -929,6 +1046,7 @@ return {
 
 		['at_clip_drum_shotgun'] = {
 			label = 'Shotgun Drum',
+			size = { 2, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -942,6 +1060,7 @@ return {
 
 		['at_clip_drum_rifle'] = {
 			label = 'Rifle Drum',
+			size = { 2, 2 },
 			type = 'magazine',
 			weight = 280,
 			client = {
@@ -1003,6 +1122,7 @@ return {
 
 		['at_scope_medium'] = {
 			label = 'Medium Scope',
+			size = { 2, 1 },
 			type = 'sight',
 			weight = 280,
 			client = {
@@ -1016,6 +1136,7 @@ return {
 
 		['at_scope_large'] = {
 			label = 'Large Scope',
+			size = { 2, 1 },
 			type = 'sight',
 			weight = 280,
 			client = {
@@ -1028,6 +1149,7 @@ return {
 
 		['at_scope_advanced'] = {
 			label = 'Advanced Scope',
+			size = { 2, 1 },
 			type = 'sight',
 			weight = 280,
 			client = {
@@ -1040,6 +1162,7 @@ return {
 
 		['at_scope_nv'] = {
 			label = 'NV Scope',
+			size = { 2, 1 },
 			type = 'sight',
 			weight = 420,
 			client = {
@@ -1052,6 +1175,7 @@ return {
 
 		['at_scope_thermal'] = {
 			label = 'Thermal Scope',
+			size = { 2, 1 },
 			type = 'sight',
 			weight = 420,
 			client = {
@@ -1785,96 +1909,116 @@ return {
 		['ammo-22'] = {
 			label = '.22 Long Rifle',
 			weight = 3,
+			maxStack = 60,
 		},
 
 		['ammo-38'] = {
 			label = '.38 LC',
 			weight = 15,
+			maxStack = 60,
 		},
 
 		['ammo-44'] = {
 			label = '.44 Magnum',
 			weight = 16,
+			maxStack = 60,
 		},
 
 		['ammo-45'] = {
 			label = '.45 ACP',
 			weight = 15,
+			maxStack = 60,
 		},
 
 		['ammo-50'] = {
 			label = '.50 AE',
 			weight = 45,
+			maxStack = 60,
 		},
 
 		['ammo-9'] = {
 			label = '9mm',
 			weight = 7,
+			maxStack = 60,
 		},
 
 		['ammo-firework'] = {
 			label = 'Firework',
 			weight = 200,
+			maxStack = 5,
 		},
 
 		['ammo-flare'] = {
 			label = 'Flare round',
 			weight = 38,
+			maxStack = 10,
 		},
 
 		['ammo-grenade'] = {
 			label = '40mm Explosive',
 			weight = 400,
+			maxStack = 5,
 		},
 
 		['ammo-heavysniper'] = {
 			label = '.50 BMG',
 			weight = 51,
+			maxStack = 10,
 		},
 
 		['ammo-laser'] = {
 			label = 'Laser charge',
 			weight = 1,
+			maxStack = 100,
 		},
 
 		['ammo-musket'] = {
 			label = '.50 Ball',
 			weight = 38,
+			maxStack = 20,
 		},
 
 		['ammo-railgun'] = {
 			label = 'Railgun charge',
 			weight = 150,
+			maxStack = 20,
 		},
 
 		['ammo-rifle'] = {
 			label = '5.56x45',
 			weight = 4,
+			maxStack = 60,
 		},
 
 		['ammo-rifle2'] = {
 			label = '7.62x39',
 			weight = 8,
+			maxStack = 60,
 		},
 
 		['ammo-rocket'] = {
 			label = 'Rocket',
 			weight = 500,
+			size = { 3, 1 },
+			maxStack = 1,
 		},
 
 		['ammo-shotgun'] = {
 			label = '12 Gauge',
 			weight = 38,
+			maxStack = 24,
 		},
 
 		['ammo-sniper'] = {
 			label = '7.62x51',
 			weight = 9,
+			maxStack = 20,
 		},
 
 		['ammo-emp'] = {
 			label = 'EMP round',
 			weight = 400,
+			maxStack = 5,
 		},
 	}
 }

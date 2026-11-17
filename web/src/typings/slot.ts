@@ -7,6 +7,10 @@ export type Slot = {
     [key: string]: any;
   };
   durability?: number;
+  // klsh: grid position (top-left cell, 1-based) and 90 degree rotation
+  x?: number;
+  y?: number;
+  rotated?: boolean;
 };
 
 export type SlotWithItem = Slot & {

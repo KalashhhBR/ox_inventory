@@ -51,6 +51,28 @@ const SlotTooltip: React.ForwardRefRenderFunction<
           )}
           {inventoryType !== 'crafting' ? (
             <>
+              {/* klsh: a renamed item always shows what it really is */}
+              {item.metadata?.label && item.metadata.label !== itemData.label && (
+                <p>
+                  {Locale.ui_original || 'Item'}: {itemData.label}
+                </p>
+              )}
+              {/* klsh: clothing shows its data here instead of in the name */}
+              {item.metadata?.drawable !== undefined && (
+                <>
+                  {item.metadata.model && (
+                    <p>
+                      {Locale.ui_model || 'Model'}: {Locale[`ui_model_${item.metadata.model}`] || item.metadata.model}
+                    </p>
+                  )}
+                  <p>
+                    {Locale.ui_piece || 'Piece'}: {item.metadata.drawable}
+                  </p>
+                  <p>
+                    {Locale.ui_variant || 'Variant'}: {item.metadata.texture ?? 0}
+                  </p>
+                </>
+              )}
               {item.durability !== undefined && (
                 <p>
                   {Locale.ui_durability}: {Math.trunc(item.durability)}

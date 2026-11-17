@@ -5,8 +5,9 @@ game 'gta5'
 name 'ox_inventory'
 author 'Overextended'
 version '2.48.1'
-repository 'https://github.com/overextended/ox_inventory'
-description 'Slot-based inventory with item metadata support'
+klsh_version '0.18.1' -- klsh: fork version (SemVer), upstream base above
+repository 'https://github.com/overextended/ox_inventory' -- klsh: upstream; the fork's own repository is in README.md
+description 'Grid inventory with clothing as items (klsh fork of ox_inventory)'
 
 dependencies {
     '/server:6116',
@@ -37,8 +38,8 @@ files {
     'server.lua',
     'locales/*.json',
     'web/build/index.html',
-    'web/build/assets/*.js',
-    'web/build/assets/*.css',
+    'web/build/*.js', -- klsh: flat build output
+    'web/build/*.css',
     'web/images/*.png',
     'modules/**/shared.lua',
     'modules/**/client.lua',

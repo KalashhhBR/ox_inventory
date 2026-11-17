@@ -6,7 +6,7 @@ import { fetchNui } from '../../utils/fetchNui';
 import { Locale } from '../../store/locale';
 import { isSlotWithItem } from '../../helpers';
 import { setClipboard } from '../../utils/setClipboard';
-import { useAppSelector } from '../../store';
+import { store, useAppSelector } from '../../store';
 import React from 'react';
 import { Menu, MenuItem } from '../utils/menu/Menu';
 
@@ -45,6 +45,14 @@ const InventoryContext: React.FC = () => {
     switch (data && data.action) {
       case 'use':
         onUse({ name: item.name, slot: item.slot });
+        break;
+      case 'open':
+        // klsh: opens a container item; "use" wears a backpack and swaps the outfit of an outfit bag
+        fetchNui('openContainer', item.slot);
+        break;
+      case 'rename':
+        // klsh: the client asks the name; itemAmount (when set) renames only part of a stack
+        fetchNui('renameItem', { slot: item.slot, count: store.getState().inventory.itemAmount });
         break;
       case 'give':
         onGive({ name: item.name, slot: item.slot });
@@ -93,8 +101,14 @@ const InventoryContext: React.FC = () => {
     <>
       <Menu>
         <MenuItem onClick={() => handleClick({ action: 'use' })} label={Locale.ui_use || 'Use'} />
+        {item && item.metadata?.container !== undefined && (
+          <MenuItem onClick={() => handleClick({ action: 'open' })} label={Locale.ui_open || 'Open'} />
+        )}
         <MenuItem onClick={() => handleClick({ action: 'give' })} label={Locale.ui_give || 'Give'} />
         <MenuItem onClick={() => handleClick({ action: 'drop' })} label={Locale.ui_drop || 'Drop'} />
+        {item?.name !== 'money' && item?.name !== 'black_money' && (
+          <MenuItem onClick={() => handleClick({ action: 'rename' })} label={Locale.ui_rename || 'Rename'} />
+        )}
         {item && item.metadata?.ammo > 0 && (
           <MenuItem onClick={() => handleClick({ action: 'removeAmmo' })} label={Locale.ui_remove_ammo} />
         )}

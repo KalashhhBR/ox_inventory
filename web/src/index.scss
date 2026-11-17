@@ -562,3 +562,403 @@ body.inv-dragging {
   transform: translateY(200px);
   transition: all 200ms;
 }
+
+// klsh: equipment panel
+$equipmentSlot: 6.6vh;
+
+.equipment-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc($gridGap * 2);
+  color: $textColor;
+}
+
+.equipment-body {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.8vh;
+  height: calc($containerSize + 0.6vh);
+}
+
+.equipment-column {
+  display: grid;
+  grid-auto-rows: $equipmentSlot;
+  grid-template-columns: $equipmentSlot;
+  gap: calc(($containerSize - 7 * $equipmentSlot) / 6);
+}
+
+.equipment-silhouette {
+  height: 44vh;
+  width: auto;
+  fill: $secondaryColor;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 0.6;
+}
+
+.equipment-slot {
+  position: relative;
+  width: $equipmentSlot;
+  height: $equipmentSlot;
+
+  .inventory-slot {
+    position: absolute;
+    inset: 0;
+    background-size: 4.6vh;
+  }
+
+  // compact item rendering: no weight/count header inside the small slot
+  .item-slot-header-wrapper,
+  .item-hotslot-header-wrapper {
+    display: none;
+  }
+
+  .item-slot-wrapper {
+    justify-content: flex-end;
+  }
+
+  .inventory-slot-label-text {
+    font-size: 9px;
+    padding: 1px 2px;
+  }
+}
+
+.equipment-slot-ghost {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center 35%;
+  background-size: 3.4vh;
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.equipment-slot-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  text-align: center;
+  font-family: $mainFont;
+  font-size: 1.05vh;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+// progress of a timed move (clothing change or heavy transfer); clicking it cancels
+// (stays clickable while the inventories are busy)
+.slot-progress {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: auto;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 2.5%;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-progress-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  background-color: rgba(46, 204, 113, 0.45);
+  transform-origin: bottom;
+  animation-name: equipment-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.slot-progress-cancel {
+  position: relative;
+  font-family: $mainFont;
+  font-size: 2vh;
+  color: #fff;
+  opacity: 0.85;
+}
+
+@keyframes equipment-progress {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+// klsh: player's inventory with the worn backpack below it
+.inventory-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+}
+
+.backpack-grid-container {
+  // two rows visible, the rest scrolls
+  height: calc(2 * #{$gridSize + 0.22vh} + #{$gridGap});
+}
+
+// klsh: narrow screens (below 16:10) drop the silhouette to save width
+@media (max-aspect-ratio: 16/10) {
+  .equipment-silhouette {
+    display: none;
+  }
+}
+
+// klsh: grid inventories (items take width x height cells)
+:root {
+  --grid-cell: 6vh;
+}
+
+.grid-scroll {
+  overflow-x: hidden;
+}
+
+.grid-area {
+  position: relative;
+  flex-shrink: 0;
+  background-color: $secondaryColor;
+  // cell lines
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: var(--grid-cell) var(--grid-cell);
+  outline: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.grid-item {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 255, 255, 0.07);
+  border-radius: 2px;
+  overflow: hidden;
+  color: $textColor;
+  font-family: $mainFont;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.grid-item-image {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+
+.grid-item-count {
+  position: absolute;
+  right: 3px;
+  top: 1px;
+  font-size: 1.3vh;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+  pointer-events: none;
+}
+
+.grid-item-hotkey {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0 3px;
+  font-size: 1.2vh;
+  background-color: $textColor;
+  color: #000;
+  border-bottom-right-radius: 2px;
+  pointer-events: none;
+}
+
+.grid-item-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 3px;
+  font-size: 1.1vh;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.grid-item-durability {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.grid-highlight {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 3;
+  border: 2px solid transparent;
+}
+
+.grid-highlight-ok {
+  background-color: rgba(46, 204, 113, 0.28);
+  border-color: rgba(46, 204, 113, 0.8);
+}
+
+.grid-highlight-swap {
+  background-color: rgba(241, 196, 15, 0.28);
+  border-color: rgba(241, 196, 15, 0.8);
+}
+
+.grid-highlight-no {
+  background-color: rgba(231, 76, 60, 0.28);
+  border-color: rgba(231, 76, 60, 0.8);
+}
+
+.grid-wallet {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6vh;
+
+  p {
+    font-size: 14px;
+    margin-right: auto;
+  }
+
+  // one cell each, like any 1 x 1 item
+  .inventory-slot {
+    width: var(--grid-cell);
+    height: var(--grid-cell);
+    background-size: 70%;
+    background-position: center;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-sizing: border-box;
+  }
+
+  .inventory-slot-label-box {
+    display: none;
+  }
+
+  .item-slot-info-wrapper p {
+    font-size: 1.2vh;
+    text-shadow: 0 0 3px #000, 0 0 3px #000;
+  }
+
+  .item-slot-info-wrapper p:first-child {
+    display: none;
+  }
+}
+
+// klsh: hotbar shortcuts below the equipment panel
+.equipment-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+}
+
+.hotbar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc($gridGap * 2);
+  color: $textColor;
+
+  p {
+    font-size: 16px;
+  }
+}
+
+.hotbar-shortcuts {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 0.5vh;
+}
+
+.hotbar-shortcut {
+  position: relative;
+  width: var(--grid-cell);
+  height: var(--grid-cell);
+  box-sizing: border-box;
+  background-color: $secondaryColor;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
+  font-family: $mainFont;
+}
+
+.hotbar-shortcut-over {
+  border-color: rgba(46, 204, 113, 0.8);
+  background-color: rgba(46, 204, 113, 0.28);
+}
+
+.hotbar-shortcut-image {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 70%;
+  pointer-events: none;
+}
+
+// klsh: search (equipment and backpack of another player)
+.search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+  color: $textColor;
+}
+
+.outfit-panel.search-equipment {
+  grid-template-columns: repeat(6, var(--grid-cell));
+}
+
+.search-equipment {
+  display: grid;
+  grid-template-columns: repeat(7, var(--grid-cell));
+  grid-auto-rows: var(--grid-cell);
+  gap: 0.4vh;
+
+  .equipment-slot,
+  .equipment-slot .inventory-slot {
+    width: var(--grid-cell);
+    height: var(--grid-cell);
+  }
+
+  .equipment-slot-label,
+  .inventory-slot-label-box,
+  .item-slot-info-wrapper {
+    display: none;
+  }
+}
+
+// klsh: item with a move waiting in the queue; the number is its turn, clicking clears the queue
+.slot-queued {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px dashed rgba(241, 196, 15, 0.8);
+  box-sizing: border-box;
+  color: #f1c40f;
+  font-family: $mainFont;
+  font-size: 2vh;
+  cursor: pointer;
+  pointer-events: auto;
+}

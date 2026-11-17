@@ -168,7 +168,7 @@ lib.callback.register('ox_inventory:openShop', function(source, data)
 		playerInv.currentShop = shop.id
 	end
 
-	return { label = playerInv.label, type = playerInv.type, slots = playerInv.slots, weight = playerInv.weight, maxWeight = playerInv.maxWeight }, shop
+	return { label = playerInv.label, type = playerInv.type, slots = playerInv.slots, weight = playerInv.weight, maxWeight = playerInv.maxWeight, grid = Inventory.Grid.payload(playerInv) }, shop -- klsh: grid
 end)
 
 local function canAffordItem(inv, currency, price)
@@ -246,7 +246,21 @@ lib.callback.register('ox_inventory:buyItem', function(source, data)
 			local metadata, count = Items.Metadata(playerInv, fromItem, fromData.metadata and table.clone(fromData.metadata) or {}, data.count)
 			local price = count * fromData.price
 
-			if toData == nil or (fromItem.name == toItem?.name and fromItem.stack and table.matches(toData.metadata, metadata)) then
+			-- klsh: with the grid the server picks the slots (the asked one first), splitting by stack limit
+			local klshPlan
+
+			if playerInv.grid then
+				local remaining
+				klshPlan, remaining = Inventory.Grid.planAdd(playerInv, fromItem, count, metadata)
+
+				if remaining > 0 then
+					return false, false, { type = 'error', description = locale('grid_full', metadata?.label or fromItem.label) }
+				end
+
+				data.toSlot = klshPlan[1].slot
+			end
+
+			if klshPlan or toData == nil or (fromItem.name == toItem?.name and fromItem.stack and table.matches(toData.metadata, metadata)) then
 				local newWeight = playerInv.weight + (fromItem.weight + (metadata?.weight or 0)) * count
 
 				if newWeight > playerInv.maxWeight then
@@ -278,12 +292,25 @@ lib.callback.register('ox_inventory:buyItem', function(source, data)
 					currency = currency,
 				})
 
-				if not hooks.success or not Inventory.SetSlot(playerInv, fromItem, count, metadata, data.toSlot) then
+				if not hooks.success or not (klshPlan and Inventory.Grid.setSlot(playerInv, fromItem, klshPlan[1], metadata) or not klshPlan and Inventory.SetSlot(playerInv, fromItem, count, metadata, data.toSlot)) then
 					if fromData.count then
 						fromData.count += count
 					end
 
 					return false
+				end
+
+				if klshPlan and #klshPlan > 1 then
+					local updates = {}
+
+					for i = 2, #klshPlan do
+						local entry = klshPlan[i]
+
+						Inventory.Grid.setSlot(playerInv, fromItem, entry, table.clone(metadata))
+						updates[#updates + 1] = { item = playerInv.items[entry.slot], inventory = playerInv.id }
+					end
+
+					playerInv:syncSlotsWithClients(updates, true)
 				end
 
 				playerInv.weight = newWeight

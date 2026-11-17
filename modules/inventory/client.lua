@@ -425,7 +425,8 @@ RegisterNetEvent('ox_inventory:refreshSlotCount', function(data)
         data = {
             slotsData = {
                 inventoryId = data.inventoryId,
-                slots = data.slots
+                slots = data.slots,
+                grid = data.grid, -- klsh
             }
         }
     })

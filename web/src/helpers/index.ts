@@ -98,15 +98,57 @@ export const getTargetInventory = (
   sourceType: Inventory['type'],
   targetType?: Inventory['type']
 ): { sourceInventory: Inventory; targetInventory: Inventory } => ({
-  sourceInventory: sourceType === InventoryType.PLAYER ? state.leftInventory : state.rightInventory,
+  sourceInventory: getInventoryByType(state, sourceType),
   targetInventory: targetType
-    ? targetType === InventoryType.PLAYER
-      ? state.leftInventory
-      : state.rightInventory
+    ? getInventoryByType(state, targetType)
     : sourceType === InventoryType.PLAYER
       ? state.rightInventory
       : state.leftInventory,
 });
+
+// klsh: resolves the linked equipment inventory besides the upstream left/right pair
+export const getInventoryByType = (state: State, type: Inventory['type']): Inventory =>
+  type === InventoryType.PLAYER
+    ? state.leftInventory
+    : type === InventoryType.EQUIPMENT && state.equipmentInventory
+      ? state.equipmentInventory
+      : type === InventoryType.BACKPACK && state.backpackInventory
+        ? state.backpackInventory
+        : type === InventoryType.GROUND && state.groundInventory
+          ? state.groundInventory
+          : type === InventoryType.OTHER_EQUIPMENT && state.otherEquipmentInventory
+            ? state.otherEquipmentInventory
+            : type === InventoryType.OTHER_BACKPACK && state.otherBackpackInventory
+              ? state.otherBackpackInventory
+              : state.rightInventory;
+
+// klsh: weight the worn backpack adds to the main inventory (own weight + reduced content weight)
+export const getBackpackCarriedWeight = (backpack: Inventory | undefined) =>
+  backpack ? (backpack.baseWeight || 0) + Math.round(getTotalWeight(backpack.items) * (1 - (backpack.reduction || 0))) : 0;
+
+// klsh: fills a linked inventory payload (sparse Lua table) into a dense slot array
+export const normalizeLinkedInventory = (inventory: Inventory): Inventory => ({
+  ...inventory,
+  categories: Array.isArray(inventory.categories) ? inventory.categories : [],
+  items: Array.from(Array(inventory.slots), (_, index) => {
+    const item = Object.values(inventory.items || {}).find((item) => item?.slot === index + 1) || {
+      slot: index + 1,
+    };
+
+    if (item.name && typeof Items[item.name] === 'undefined') getItemData(item.name);
+
+    return item;
+  }),
+});
+
+// klsh: equipment slot (1-based) that accepts the item, if any
+export const getEquipmentSlot = (equipment: Inventory | undefined, itemName?: string) => {
+  if (!equipment?.categories || !itemName) return;
+
+  const index = equipment.categories.findIndex((category) => category.items.includes(itemName));
+
+  return index === -1 ? undefined : index + 1;
+};
 
 export const itemDurability = (metadata: any, curTime: number) => {
   // sorry dunak

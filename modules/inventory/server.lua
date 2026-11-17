@@ -2,6 +2,8 @@ if not lib then return end
 
 local Inventory = {}
 local db = require 'modules.mysql.server'
+local Equipment -- klsh: assigned at the end of this file (modules.equipment.server)
+local Grid -- klsh: assigned at the end of this file (modules.grid.server)
 
 ---@type table<any, OxInventory>
 local Inventories = {}
@@ -19,7 +21,8 @@ function OxInventory:openInventory(inv)
 	self.open = inv?.id or self.id
 
     if inv then
-        inv:set('open', true)
+        -- klsh: a player being searched keeps their own `open` state (they may open their inventory)
+        if not inv.player then inv:set('open', true) end
         inv.openedBy[self.id] = true
     end
 
@@ -35,12 +38,14 @@ function OxInventory:closeInventory(noEvent)
 
     if inv then
         inv.openedBy[self.id] = nil
-        inv:set('open', false)
+        if not inv.player then inv:set('open', false) end -- klsh: see openInventory
     end
 
     self.open = false
     self.currentShop = nil
     self.containerSlot = nil
+
+    if Equipment then Equipment.onClose(self) end -- klsh
 
 	if not noEvent then
 		TriggerClientEvent('ox_inventory:closeInventory', self.id, true)
@@ -180,7 +185,7 @@ local function loadInventoryData(data, player, ignoreSecurityChecks)
                 dbId = data.id:sub(6)
             end
 
-            inventory = Inventory.Create(data.id, plate, data.type, storage[1], 0, storage[2], false, nil, nil, dbId)
+            inventory = Inventory.Create(data.id, plate, data.type, Grid.size(storage[1]), 0, storage[2], false, nil, nil, dbId) -- klsh: { width, height } or slots
 		end
 	elseif data.type == 'policeevidence' then
 		inventory = Inventory.Create(data.id, locale('police_evidence'), data.type, 100, 0, 100000, false)
@@ -237,6 +242,13 @@ setmetatable(Inventory, {
 })
 
 ---@cast Inventory +fun(inv: inventory, player?: inventory, ignoreSecurityChecks?: boolean): OxInventory|false|nil
+
+-- klsh: returns an already loaded inventory by id, without trying to load it
+---@param id string | number
+---@return OxInventory?
+function Inventory.GetLoaded(id)
+	return Inventories[id]
+end
 
 ---@param inv inventory
 ---@param owner? string | number
@@ -295,7 +307,7 @@ function Inventory.GetContainerFromSlot(inv, slotId)
 	local container = Inventory(slotData.metadata.container)
 
 	if not container then
-		container = Inventory.Create(slotData.metadata.container, slotData.label, 'container', slotData.metadata.size[1], 0, slotData.metadata.size[2], false)
+		container = Inventory.Create(slotData.metadata.container, slotData.label, 'container', Grid.containerSize(slotData.name, slotData.metadata.size[1]), 0, slotData.metadata.size[2], false) -- klsh: grid size by item name
 	end
 
 	return container
@@ -325,7 +337,8 @@ function Inventory.CloseAll(inv, ignoreId)
 	for playerId in pairs(inv.openedBy) do
 		local playerInv = Inventory(playerId)
 
-		if playerInv and playerId ~= ignoreId then
+		-- klsh: whoever is searching this player through SearchPlayer keeps the search open
+		if playerInv and playerId ~= ignoreId and playerInv.klshSearching ~= inventory.id then
             playerInv:closeInventory()
         end
 	end
@@ -391,7 +404,8 @@ local function minimal(inv)
 				name = v.name,
 				count = v.count,
 				slot = k,
-				metadata = next(v.metadata) and v.metadata or nil
+				metadata = next(v.metadata) and v.metadata or nil,
+				x = v.x, y = v.y, rotated = v.rotated or nil, -- klsh: grid position
 			}
 		end
 	end
@@ -429,7 +443,7 @@ function Inventory.SetSlot(inv, item, count, metadata, slot)
 		TriggerClientEvent('ox_inventory:itemNotify', inv.id, { currentSlot, 'ui_removed', currentSlot.count })
 		currentSlot = nil
 	else
-		currentSlot = {name = item.name, label = item.label, weight = item.weight, slot = slot, count = newCount, description = item.description, metadata = metadata, stack = item.stack, close = item.close}
+		currentSlot = {name = item.name, label = item.label, weight = item.weight, slot = slot, count = newCount, description = item.description, metadata = metadata, stack = item.stack, close = item.close, x = currentSlot and currentSlot.x, y = currentSlot and currentSlot.y, rotated = currentSlot and currentSlot.rotated} -- klsh: keeps the grid position
 		local slotWeight = Inventory.SlotWeight(item, currentSlot)
 		currentSlot.weight = slotWeight
 		newWeight += slotWeight
@@ -440,6 +454,9 @@ function Inventory.SetSlot(inv, item, count, metadata, slot)
 	inv.weight = newWeight
 	inv.items[slot] = currentSlot
 	inv.changed = true
+
+	-- klsh: a new slot in a grid inventory always gets a position
+	if currentSlot and inv.grid and not currentSlot.x then Grid.ensurePosition(inv, currentSlot) end
 
 	return true, currentSlot
 end
@@ -649,6 +666,8 @@ function Inventory.Create(id, label, invType, slots, weight, maxWeight, owner, i
 		self.weight = Inventory.CalculateWeight(items)
 	end
 
+	if Grid then Grid.setup(self) end -- klsh: grid size, wallet and legacy slots
+
 	Inventories[self.id] = setmetatable(self, OxInventory)
 	return Inventories[self.id]
 end
@@ -737,7 +756,8 @@ function Inventory.Save(inv)
                 name = v.name,
                 count = v.count,
                 slot = k,
-                metadata = next(v.metadata) and v.metadata or nil
+                metadata = next(v.metadata) and v.metadata or nil,
+				x = v.x, y = v.y, rotated = v.rotated or nil, -- klsh: grid position
             }
         end
     end
@@ -885,7 +905,7 @@ function Inventory.Load(id, invType, owner)
 				v.metadata = Items.CheckMetadata(v.metadata or {}, item, v.name, ostime)
 				local slotWeight = Inventory.SlotWeight(item, v)
 				weight += slotWeight
-				returnData[v.slot] = {name = item.name, label = item.label, weight = slotWeight, slot = v.slot, count = v.count, description = item.description, metadata = v.metadata, stack = item.stack, close = item.close}
+				returnData[v.slot] = {name = item.name, label = item.label, weight = slotWeight, slot = v.slot, count = v.count, description = item.description, metadata = v.metadata, stack = item.stack, close = item.close, x = v.x, y = v.y, rotated = v.rotated} -- klsh: grid position
 			end
 		end
 	end
@@ -1145,7 +1165,7 @@ exports('SetMaxWeight', Inventory.SetMaxWeight)
 ---@param slot? number
 ---@param cb? fun(success?: boolean, response: string|SlotWithItem|nil)
 ---@return boolean? success, string|SlotWithItem|nil response
-function Inventory.AddItem(inv, item, count, metadata, slot, cb)
+function Inventory.AddItem(inv, item, count, metadata, slot, cb, overflow)
 	if type(item) ~= 'table' then item = Items(item) end
 
 	if not item then return false, 'invalid_item' end
@@ -1163,6 +1183,18 @@ function Inventory.AddItem(inv, item, count, metadata, slot, cb)
 	local invokingResource = server.loglevel > 1 and GetInvokingResource()
 
 	metadata = assertMetadata(metadata)
+
+	-- klsh: grid inventories split by stack limit, are all or nothing and may leave the excess on the ground
+	if inv.grid then
+		local caller = GetInvokingResource()
+		local dropped
+
+		success, response, dropped = Grid.addItem(inv, item, count, metadata, slot, overflow or (caller ~= nil and caller ~= shared.resource), invokingResource)
+
+		if cb then return cb(success, response) end
+
+		return success, response, dropped
+	end
 
 	if slot then
 		local slotData = inv.items[slot]
@@ -1343,6 +1375,8 @@ function Inventory.GetItemSlots(inv, item, metadata, strict)
 		end
 	end
 
+	if inv.grid then emptySlots = Grid.emptyCells(inv) end -- klsh: wallet and legacy slots are not free room
+
 	return slots, totalCount, emptySlots
 end
 exports('GetItemSlots', Inventory.GetItemSlots)
@@ -1477,6 +1511,9 @@ function Inventory.CanCarryItem(inv, item, count, metadata)
 		inv = Inventory(inv) --[[@as OxInventory]]
 
 		if inv then
+			-- klsh: room in the grid, counting stack limits
+			if inv.grid and not Grid.canCarry(inv, item, count, type(metadata) == 'table' and metadata or { type = metadata or nil }) then return false end
+
 			local itemSlots, _, emptySlots = Inventory.GetItemSlots(inv, item, type(metadata) == 'table' and metadata or { type = metadata or nil })
 
 			if not itemSlots then return end
@@ -1579,6 +1616,7 @@ local function CustomDrop(prefix, items, coords, slots, maxWeight, instance, mod
 	if not inventory then return end
 
 	inventory.items, inventory.weight = generateItems(inventory, 'drop', items)
+	if Grid then Grid.setup(inventory) end -- klsh: positions for the generated items
 	inventory.coords = coords
 	Inventory.Drops[dropId] = {
 		coords = inventory.coords,
@@ -1685,13 +1723,15 @@ local function dropItem(source, playerInventory, fromData, data)
 	Inventory.Drops[dropId] = {coords = inventory.coords, instance = data.instance}
 	playerInventory.changed = true
 
-	TriggerClientEvent('ox_inventory:createDrop', -1, dropId, Inventory.Drops[dropId], playerInventory.open and source, slot)
+	-- klsh: a linked inventory (equipment) is never "open" itself; its owner still gets the new drop opened
+	TriggerClientEvent('ox_inventory:createDrop', -1, dropId, Inventory.Drops[dropId], Equipment.onDropCreated(source, dropId, (playerInventory.open or playerInventory.klshLinkedTo) and source), slot)
 
 	if server.loglevel > 0 then
 		lib.logger(playerInventory.owner, 'swapSlots', ('%sx %s transferred from "%s" to "%s"'):format(data.count, toData.name, playerInventory.label, dropId))
 	end
 
-	if server.syncInventory then server.syncInventory(playerInventory) end
+	-- klsh: framework sync only applies to the player inventory, not to a linked one
+	if server.syncInventory and playerInventory.player then server.syncInventory(playerInventory) end
 
 	return true, {
 		weight = playerInventory.weight,
@@ -1709,7 +1749,8 @@ local GetLocks = require 'modules.locks'
 ---@param source number
 ---@param data SwapSlotData
 lib.callback.register('ox_inventory:swapItems', function(source, data)
-	if data.fromType ~= data.toType and data.toType ~= 'player' and data.fromType ~= 'player' then
+	-- klsh: linked inventory types (equipment) are valid on either side
+	if data.fromType ~= data.toType and data.toType ~= 'player' and data.fromType ~= 'player' and not Equipment.isLinkedType(data.fromType) and not Equipment.isLinkedType(data.toType) then
         Utils.LogExploit(source, 'swapItems', 'Triggered event with invalid data', true)
         return
     end
@@ -1720,8 +1761,10 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 
 	if not playerInventory or not playerInventory.open then return end
 
-	local toInventory = (data.toType == 'player' and playerInventory) or Inventory(playerInventory.open)
-	local fromInventory = (data.fromType == 'player' and playerInventory) or Inventory(playerInventory.open)
+	-- klsh: resolve linked inventories (equipment, backpack, ground) before the upstream left/right logic
+	Equipment.prepareGround(playerInventory, data)
+	local toInventory = Equipment.resolve(playerInventory, data.toType) or (data.toType == 'player' and playerInventory) or Inventory(playerInventory.open)
+	local fromInventory = Equipment.resolve(playerInventory, data.fromType) or (data.fromType == 'player' and playerInventory) or Inventory(playerInventory.open)
 
 	if not fromInventory or not toInventory then
 		playerInventory:closeInventory()
@@ -1729,6 +1772,34 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 	end
 
     if data.toType == 'inspect' or data.fromType == 'inspect' then return end
+
+    -- klsh: slots sent by the client are checked against the grid (range, wallet, stack limit)
+    local klshAllowed, klshReason = Grid.preSwap(playerInventory, fromInventory, toInventory, data)
+
+    if not klshAllowed then return false, klshReason end
+
+    -- klsh: moving or rotating inside the same inventory only changes the position
+    if data.klshMove then return Grid.reposition(fromInventory, data) end
+
+    -- klsh: an outfit bag only takes clothing, each piece in the slot of its category
+    klshAllowed, klshReason = Equipment.outfitSwap(playerInventory, fromInventory, toInventory, data)
+
+    if not klshAllowed then return false, klshReason end
+
+    -- klsh: equipment slots only accept their own category
+    klshAllowed, klshReason = Equipment.preSwap(playerInventory, fromInventory, toInventory, data)
+
+    if not klshAllowed then return false, klshReason end
+
+    -- klsh: the transfer wait is over; the place must still be free
+    klshAllowed, klshReason = Grid.preSwap(playerInventory, fromInventory, toInventory, data)
+
+    if not klshAllowed then return false, klshReason end
+
+    -- klsh: the grid check restored the original request; the outfit bag slot is resolved again
+    klshAllowed, klshReason = Equipment.outfitSwap(playerInventory, fromInventory, toInventory, data)
+
+    if not klshAllowed then return false, klshReason end
 
     local activeSlots <close> = GetLocks({
        	('inventory-%s:slot-%s'):format(fromInventory.id, data.fromSlot),
@@ -1789,14 +1860,32 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
         end
 
         if data.toType == 'newdrop' then
-            return dropItem(source, fromInventory, fromData, data)
+            -- klsh: dropping a worn piece also undresses the ped
+            local dropped, dropResponse, dropWeapon = dropItem(source, fromInventory, fromData, data)
+
+            if dropped then
+                -- other players looking at the source inventory (stash, trunk...) see the slot change
+                if fromInventory ~= playerInventory and not fromInventory.player then
+                    fromInventory:syncSlotsWithClients({
+                        { item = fromInventory.items[data.fromSlot] or { slot = data.fromSlot }, inventory = fromInventory.id }
+                    }, false)
+                end
+
+                Equipment.postSwap(playerInventory, fromInventory, toInventory)
+
+                -- the client reads this as the player's carried weight
+                if dropResponse then dropResponse.weight = playerInventory.weight end
+            end
+
+            return dropped, dropResponse, dropWeapon
         end
 
 		if fromData then
             if fromData.metadata.container and toInventory.type == 'container' then return false end
             if toData and toData.metadata.container and fromInventory.type == 'container' then return false end
 
-			local container, containerItem = (not sameInventory and playerInventory.containerSlot) and (fromInventory.type == 'container' and fromInventory or toInventory)
+			-- klsh: an equipment inventory is never the opened container
+			local container, containerItem = (not sameInventory and playerInventory.containerSlot) and Equipment.getOpenedContainer(fromInventory, toInventory) or nil
 
 			if container then
 				containerItem = playerInventory.items[playerInventory.containerSlot]
@@ -1827,7 +1916,7 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 						if not partiesPresent() then hooks.success = false return end
 
 						if containerItem then
-							local toContainer = toInventory.type == 'container'
+							local toContainer = toInventory == container -- klsh: the opened container, not any container
 							local whitelist = Items.containers[containerItem.name]?.whitelist
 							local blacklist = Items.containers[containerItem.name]?.blacklist
 							local checkItem = toContainer and fromData.name or toData.name
@@ -1893,7 +1982,7 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 						toInventory.weight = totalWeight
 
 						if container then
-							Inventory.ContainerWeight(containerItem, toInventory.type == 'container' and toInventory.weight or fromInventory.weight, playerInventory)
+							Inventory.ContainerWeight(containerItem, toInventory == container and toInventory.weight or fromInventory.weight, playerInventory) -- klsh: the opened container, not any container
 						end
 
 						if fromOtherPlayer then
@@ -1927,7 +2016,7 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 					if not partiesPresent() then hooks.success = false return end
 
 					if not sameInventory then
-						local toContainer = toInventory.type == 'container'
+						local toContainer = toInventory == container -- klsh: the opened container, not any container
 
 						if container then
 							if toContainer and containerItem then
@@ -1974,7 +2063,7 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 			local items = {}
 
 			if fromInventory.player and not fromOtherPlayer then
-				if toInventory.type == 'container' and containerItem then
+				if toInventory == container and containerItem then -- klsh: the opened container, not any container
 					items[#items + 1] = {
 						item = containerItem,
 						inventory = playerInventory.id
@@ -1983,7 +2072,7 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 			end
 
 			if toInventory.player and not toOtherPlayer then
-				if fromInventory.type == 'container' and containerItem then
+				if fromInventory == container and containerItem then -- klsh: the opened container, not any container
 					items[#items + 1] = {
 						item = containerItem,
 						inventory = playerInventory.id
@@ -2058,6 +2147,9 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 				end
 			end
 
+			Equipment.postSwap(playerInventory, fromInventory, toInventory) -- klsh
+			Grid.postSwap(playerInventory, fromInventory, toInventory, data) -- klsh
+
 			return containerItem and containerItem.weight or true, nil, weaponSlot
 		end
 	end
@@ -2103,7 +2195,7 @@ function Inventory.Return(source)
             if item then
                 local weight = Inventory.SlotWeight(item, data)
                 totalWeight = totalWeight + weight
-                inventory[data.slot] = {name = data.name, label = item.label, weight = weight, slot = data.slot, count = data.count, description = item.description, metadata = data.metadata, stack = item.stack, close = item.close}
+                inventory[data.slot] = {name = data.name, label = item.label, weight = weight, slot = data.slot, count = data.count, description = item.description, metadata = data.metadata, stack = item.stack, close = item.close, x = data.x, y = data.y, rotated = data.rotated} -- klsh: grid position
             end
         end
     end
@@ -2111,6 +2203,8 @@ function Inventory.Return(source)
     inv.changed = true
     inv.weight = totalWeight
     inv.items = inventory
+
+    if Grid then Grid.setup(inv) end -- klsh: wallet and positions for what came back (saved positions are kept)
 
     TriggerClientEvent('ox_inventory:inventoryReturned', source, { inventory, totalWeight })
 
@@ -2198,6 +2292,8 @@ function Inventory.Clear(inv, keep)
 	if server.syncInventory then server.syncInventory(inv) end
 
 	inv.weapon = nil
+
+	if Grid then Grid.trim(inv) end -- klsh: extra rows that are empty now go away
 end
 
 exports('ClearInventory', Inventory.Clear)
@@ -2208,6 +2304,7 @@ function Inventory.GetEmptySlot(inv)
 	local inventory = Inventory(inv)
 
 	if not inventory then return end
+	if inventory.grid then return Grid.emptySlot(inventory) end -- klsh
 
 	local items = inventory.items
 
@@ -2230,6 +2327,9 @@ function Inventory.GetSlotForItem(inv, itemName, metadata)
 	if not inventory or not item then return end
 
 	metadata = assertMetadata(metadata)
+
+	if inventory.grid then return Grid.slotForItem(inventory, item, metadata) end -- klsh
+
 	local items = inventory.items
 	local emptySlot
 
@@ -2380,7 +2480,8 @@ local function prepareInventorySave(inv, buffer, time)
                 name = v.name,
                 count = v.count,
                 slot = k,
-                metadata = next(v.metadata) and v.metadata or nil
+                metadata = next(v.metadata) and v.metadata or nil,
+				x = v.x, y = v.y, rotated = v.rotated or nil, -- klsh: grid position
             }
         end
 	end
@@ -2448,7 +2549,11 @@ local function saveInventories(clearInventories)
     if not clearInventories then return end
 
     for _, inv in pairs(Inventories) do
-        if not inv.open and not inv.player then
+        -- klsh: linked inventories of online players stay loaded
+        if inv.klshKeepUntil and time >= inv.klshKeepUntil and not next(inv.openedBy) then
+            -- klsh: an overflow drop lasts a fixed time, whatever its activity
+            Inventory.Remove(inv)
+        elseif not inv.klshKeepUntil and not inv.open and not inv.player and not (inv.klshLinkedTo and Inventories[inv.klshLinkedTo]) and not (inv.type == 'drop' and next(inv.openedBy)) then
             -- clear inventory from memory if unused for x minutes, or on entity/netid mismatch
             if inv.type == 'glovebox' or inv.type == 'trunk' then
                 if NetworkGetEntityFromNetworkId(inv.netid) ~= inv.entityId then
@@ -2532,6 +2637,16 @@ local function giveItem(playerId, slot, target, count)
 		local item = Items(data.name)
 
 		if not item or data.count < count or not Inventory.CanCarryItem(toInventory, item, count, data.metadata) or #(GetEntityCoords(fromInventory.player.ped) - GetEntityCoords(toInventory.player.ped)) > 15 then
+			return { 'cannot_give', count, data.label }
+		end
+
+		-- klsh: handing over takes time; everything is checked again afterwards
+		-- (cancelling it is not an error: nothing is said)
+		if not Equipment.giveWait(playerId, target, data, count) then return end
+
+		if Inventories[fromInventory.id] ~= fromInventory or Inventories[toInventory.id] ~= toInventory then return end
+
+		if fromInventory.items[slot] ~= data or data.count < count or not Inventory.CanCarryItem(toInventory, item, count, data.metadata) or #(GetEntityCoords(fromInventory.player.ped) - GetEntityCoords(toInventory.player.ped)) > 15 then
 			return { 'cannot_give', count, data.label }
 		end
 
@@ -2738,7 +2853,10 @@ local function checkStashProperties(properties)
 		error(('received %s for stash name (expected string)'):format(type(name)))
 	end
 
-	if type(slots) ~= 'number' then
+	-- klsh: slots may be a grid size, { width, height }
+	if type(slots) == 'table' then slots = Grid.size(slots) end
+
+	if type(slots) ~= 'number' and type(slots) ~= 'table' then
 		error(('received %s for stash slots (expected number)'):format(type(slots)))
 	end
 
@@ -2803,7 +2921,7 @@ local function registerStash(name, label, slots, maxWeight, owner, groups, coord
 			if stash.type == 'stash' and stash.dbId == name then
 				stash.label = label or stash.label
 				stash.owner = (owner and owner ~= true) and stash.owner or owner
-				stash.slots = slots or stash.slots
+				stash.slots = type(slots) == 'number' and slots or stash.slots -- klsh: a grid size applies on the next load
 				stash.maxWeight = maxWeight or stash.maxWeight
 				stash.groups = groups or stash.groups
 				stash.coords = coords or stash.coords
@@ -2855,5 +2973,14 @@ function Inventory.InspectInventory(playerId, invId)
 end
 
 exports('InspectInventory', Inventory.InspectInventory)
+
+-- klsh: equipment module needs this table; loaded here to avoid a circular require
+Equipment = require 'modules.equipment.server'
+Equipment.init(Inventory)
+
+-- klsh: grid module, loaded here for the same reason
+Grid = require 'modules.grid.server'
+Grid.init(Inventory, CustomDrop)
+Inventory.Grid = Grid
 
 return Inventory

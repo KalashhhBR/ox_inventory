@@ -57,6 +57,7 @@ function server.playerDropped(source)
 
 	if inv?.player then
 		inv:closeInventory()
+		require('modules.equipment.server').onPlayerDropped(inv) -- klsh
 		Inventory.Remove(inv)
 	end
 end

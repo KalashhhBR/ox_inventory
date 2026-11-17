@@ -4,6 +4,7 @@ return {
 		blip = {
 			id = 59, colour = 69, scale = 0.8
 		}, inventory = {
+			{ name = 'outfit_bag', price = 500 }, -- klsh: outfit bag
 			{ name = 'burger', price = 10 },
 			{ name = 'water', price = 10 },
 			{ name = 'cola', price = 10 },

@@ -9,4 +9,6 @@ export type ItemData = {
   buttons?: string[];
   ammoName?: string;
   image?: string;
+  // klsh: cells taken in a grid inventory [width, height]
+  size?: [number, number];
 };

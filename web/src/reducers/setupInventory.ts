@@ -1,5 +1,5 @@
 import { CaseReducer, PayloadAction } from '@reduxjs/toolkit';
-import { getItemData, itemDurability } from '../helpers';
+import { getItemData, itemDurability, normalizeLinkedInventory } from '../helpers';
 import { Items } from '../store/items';
 import { Inventory, State } from '../typings';
 
@@ -8,9 +8,14 @@ export const setupInventoryReducer: CaseReducer<
   PayloadAction<{
     leftInventory?: Inventory;
     rightInventory?: Inventory;
+    equipmentInventory?: Inventory; // klsh
+    backpackInventory?: Inventory; // klsh
+    groundInventory?: Inventory; // klsh
+    otherEquipmentInventory?: Inventory; // klsh
+    otherBackpackInventory?: Inventory; // klsh
   }>
 > = (state, action) => {
-  const { leftInventory, rightInventory } = action.payload;
+  const { leftInventory, rightInventory, equipmentInventory, backpackInventory, groundInventory } = action.payload;
   const curTime = Math.floor(Date.now() / 1000);
 
   if (leftInventory)
@@ -50,6 +55,24 @@ export const setupInventoryReducer: CaseReducer<
         return item;
       }),
     };
+
+  // klsh: linked inventories follow the player's inventory; payloads without them (shops, crafting) hide them
+  if (leftInventory || equipmentInventory)
+    state.equipmentInventory = equipmentInventory && normalizeLinkedInventory(equipmentInventory);
+
+  if (leftInventory || backpackInventory)
+    state.backpackInventory = backpackInventory && normalizeLinkedInventory(backpackInventory);
+
+  if (leftInventory || groundInventory)
+    state.groundInventory = groundInventory && normalizeLinkedInventory(groundInventory);
+
+  // klsh: equipment and backpack of the player being searched follow the secondary inventory
+  if (leftInventory || rightInventory) {
+    const { otherEquipmentInventory, otherBackpackInventory } = action.payload;
+
+    state.otherEquipmentInventory = otherEquipmentInventory && normalizeLinkedInventory(otherEquipmentInventory);
+    state.otherBackpackInventory = otherBackpackInventory && normalizeLinkedInventory(otherBackpackInventory);
+  }
 
   state.shiftPressed = false;
   state.isBusy = false;

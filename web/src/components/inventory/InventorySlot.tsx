@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { DragSource, Inventory, InventoryType, Slot, SlotWithItem } from '../../typings';
 import { useDrag, useDragDropManager, useDrop } from 'react-dnd';
 import { useAppDispatch } from '../../store';
@@ -15,6 +15,8 @@ import { ItemsPayload } from '../../reducers/refreshSlots';
 import { closeTooltip, openTooltip } from '../../store/tooltip';
 import { openContextMenu } from '../../store/contextMenu';
 import { useMergeRefs } from '@floating-ui/react';
+import { fetchNui } from '../../utils/fetchNui';
+import { clearMoveQueue, useQueuePosition } from '../../dnd/moveQueue';
 
 interface SlotProps {
   inventoryId: Inventory['id'];
@@ -98,6 +100,21 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
     manager.dispatch({ type: 'dnd-core/END_DRAG' });
   });
 
+  // klsh: timed move in progress on this slot (clothing change or heavy transfer); clicking cancels
+  const [progress, setProgress] = useState<number | undefined>(undefined);
+
+  useNuiEvent<{ inventory?: string | number; slot?: number; duration?: number }>('transferProgress', (data) => {
+    const isThisSlot =
+      !!data && data.slot === item.slot && data.inventory !== undefined && String(data.inventory) === String(inventoryId);
+
+    setProgress(isThisSlot ? data.duration : undefined);
+  });
+
+  useNuiEvent('closeInventory', () => setProgress(undefined));
+
+  // klsh: place of this item in the queue of pending moves (2 = next after the one running)
+  const queued = useQueuePosition(inventoryType, item.slot);
+
   const connectRef = (element: HTMLDivElement | null) => {
     if (!element) return;
     drag(drop(element));
@@ -138,6 +155,30 @@ const InventorySlot: React.ForwardRefRenderFunction<HTMLDivElement, SlotProps> =
         border: isOver ? '1px dashed rgba(255,255,255,0.4)' : '',
       }}
     >
+      {queued > 1 && progress === undefined && (
+        <div
+          className="slot-queued"
+          onClick={(event) => {
+            event.stopPropagation();
+            clearMoveQueue();
+          }}
+        >
+          {queued - 1}
+        </div>
+      )}
+      {progress !== undefined && (
+        <div
+          className="slot-progress"
+          onClick={(event) => {
+            event.stopPropagation();
+            clearMoveQueue();
+            fetchNui('cancelEquip');
+          }}
+        >
+          <div className="slot-progress-fill" style={{ animationDuration: `${progress}ms` }} />
+          <div className="slot-progress-cancel">✕</div>
+        </div>
+      )}
       {isSlotWithItem(item) && (
         <div
           className="item-slot-wrapper"

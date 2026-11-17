@@ -5,6 +5,11 @@ export enum InventoryType {
   SHOP = 'shop',
   CONTAINER = 'container',
   CRAFTING = 'crafting',
+  EQUIPMENT = 'equipment', // klsh
+  BACKPACK = 'backpack', // klsh: worn backpack shown below the player's inventory
+  GROUND = 'ground', // klsh: ground shown below the secondary inventory
+  OTHER_EQUIPMENT = 'otherequipment', // klsh: clothing of the player being searched
+  OTHER_BACKPACK = 'otherbackpack', // klsh: worn backpack of the player being searched
 }
 
 export type Inventory = {
@@ -15,4 +20,22 @@ export type Inventory = {
   maxWeight?: number;
   label?: string;
   groups?: Record<string, number>;
+  // klsh: equipment inventory only; index = slot - 1
+  categories?: EquipmentCategory[];
+  // klsh: player inventory only; moves between inventories at or above this weight (g) take time
+  transferMinWeight?: number;
+  // klsh: worn backpack only
+  reduction?: number;
+  baseWeight?: number;
+  // klsh: grid inventories; h includes extra legacy rows; wallet = number of cells when the last two
+  // identifiers are the wallet slots (player only)
+  grid?: { w: number; h: number; wallet?: number };
+};
+
+export type EquipmentCategory = {
+  name: string;
+  label: string;
+  items: string[];
+  // klsh: outfit bag: categories without a slot (vest, backpack)
+  hidden?: boolean;
 };

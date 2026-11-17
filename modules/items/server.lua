@@ -195,7 +195,8 @@ function Items.Metadata(inv, item, metadata, count)
 
 		if container then
 			count = 1
-			metadata.container = metadata.container or GenerateText(3)..os.time()
+			-- klsh: the id tells an outfit bag apart (no grid, clothing only)
+			metadata.container = metadata.container or (container.outfit and 'outfit-' or '')..GenerateText(3)..os.time()
 			metadata.size = container.size
 		elseif not next(metadata) then
 			if item.name == 'identification' then
@@ -251,6 +252,12 @@ end
 ---@param ostime number
 ---Validate (and in some cases convert) item metadata when an inventory is being loaded.
 function Items.CheckMetadata(metadata, item, name, ostime)
+	-- klsh: clothing no longer carries "piece-variant" in its name (the tooltip shows it); a label
+	-- that is just the automatic one from older versions is dropped
+	if metadata.drawable and metadata.label == ('%s %d-%d'):format(item.label, metadata.drawable, metadata.texture or 0) then
+		metadata.label = nil
+	end
+
 	if metadata.bag then
 		metadata.container = metadata.bag
 		metadata.size = Items.containers[name]?.size or {5, 1000}

@@ -23,6 +23,16 @@ shared = {
 }
 
 shared.dropslots = GetConvarInt('inventory:dropslots', shared.playerslots)
+
+do -- klsh: with the grid the sizes come from data/grid.lua (cells plus the wallet slots)
+    local grid = lib.load('data.grid')
+
+    if grid and grid.enabled then
+        shared.grid = grid
+        shared.playerslots = grid.player.w * grid.player.h + #(grid.wallet or {})
+        shared.dropslots = grid.drop.w * grid.drop.h
+    end
+end
 shared.dropweight = GetConvarInt('inventory:dropweight', shared.playerweight)
 
 do

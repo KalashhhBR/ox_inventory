@@ -1,3 +1,6 @@
+-- klsh: per-item grid fields (see CONFIG.md):
+--   size = { width, height }   cells the item takes in a grid inventory (default 1 x 1)
+--   maxStack = N               largest stack (false = no limit; default in data/grid.lua)
 return {
 	['testburger'] = {
 		label = 'Test Burger',
@@ -197,6 +200,8 @@ return {
 	['armour'] = {
 		label = 'Bulletproof Vest',
 		weight = 3000,
+		size = { 3, 3 }, -- klsh: worn in the vest slot (see data/equipment.lua)
+		maxStack = 1,
 		stack = false,
 		client = {
 			anim = { dict = 'clothingshirt', clip = 'try_shirt_positive_d' },
@@ -222,4 +227,172 @@ return {
 		label = 'Scrap Metal',
 		weight = 80,
 	},
+
+    -- klsh: clothing items (one per equipment slot; the piece itself is stored in metadata)
+    ['clothing_hat'] = {
+        label = 'Chapéu',
+        weight = 150,
+        size = { 2, 1 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_mask'] = {
+        label = 'Máscara',
+        weight = 100,
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_glasses'] = {
+        label = 'Óculos',
+        weight = 50,
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_ears'] = {
+        label = 'Brinco',
+        weight = 20,
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_neck'] = {
+        label = 'Colar',
+        weight = 80,
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_top'] = {
+        label = 'Jaqueta',
+        weight = 600,
+        size = { 2, 2 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_undershirt'] = {
+        label = 'Camiseta',
+        weight = 250,
+        size = { 2, 2 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_gloves'] = {
+        label = 'Luvas',
+        weight = 100,
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_pants'] = {
+        label = 'Calça',
+        weight = 500,
+        size = { 2, 2 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_shoes'] = {
+        label = 'Sapatos',
+        weight = 700,
+        size = { 2, 1 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_watch'] = {
+        label = 'Relógio',
+        weight = 100,
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    ['clothing_bracelet'] = {
+        label = 'Pulseira',
+        weight = 50,
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+    },
+
+    -- klsh: outfit bag (keeps one look; rules in data/equipment.lua, `outfitBag`)
+    ['outfit_bag'] = {
+        label = 'Bolsa de estilo',
+        weight = 500,
+        size = { 3, 2 },
+        maxStack = 1,
+        stack = false,
+        close = true,
+        consume = 0,
+        client = {
+            image = 'clothing_bag.png',
+        },
+    },
+
+    -- klsh: backpacks (containers worn in the bag slot; capacity and weight reduction in data/equipment.lua)
+    ['backpack_small'] = {
+        label = 'Mochila pequena',
+        weight = 400,
+        size = { 2, 2 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+        client = {
+            image = 'clothing_bag.png',
+        },
+    },
+
+    ['backpack_medium'] = {
+        label = 'Mochila',
+        weight = 800,
+        size = { 3, 3 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+        client = {
+            image = 'clothing_bag.png',
+        },
+    },
+
+    ['backpack_large'] = {
+        label = 'Mochila grande',
+        weight = 1200,
+        size = { 4, 3 },
+        maxStack = 1,
+        stack = false,
+        close = false,
+        consume = 0,
+        client = {
+            image = 'clothing_bag.png',
+        },
+    },
 }

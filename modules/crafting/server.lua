@@ -91,7 +91,7 @@ lib.callback.register('ox_inventory:openCraftingBench', function(source, id, ind
 		left:openInventory()
 	end
 
-	return { label = left.label, type = left.type, slots = left.slots, weight = left.weight, maxWeight = left.maxWeight }
+	return { label = left.label, type = left.type, slots = left.slots, weight = left.weight, maxWeight = left.maxWeight, grid = Inventory.Grid.payload(left) } -- klsh: grid
 end)
 
 local TriggerEventHooks = require 'modules.hooks.server'
@@ -121,6 +121,12 @@ lib.callback.register('ox_inventory:craftItem', function(source, id, index, reci
 
 			local craftedItem = Items(recipe.name)
 			local craftCount = (type(recipe.count) == 'number' and recipe.count) or (table.type(recipe.count) == 'array' and math.random(recipe.count[1], recipe.count[2])) or 1
+
+			-- klsh: the result needs room in the grid before anything is consumed (the space the
+			-- ingredients will free is not counted)
+			if left.grid and craftedItem and not Inventory.Grid.canCarry(left, craftedItem, craftCount, recipe.metadata or {}) then
+				return false, 'grid_no_room'
+			end
 
 			-- Modified weight calculation
 			local newWeight = left.weight
@@ -264,7 +270,7 @@ lib.callback.register('ox_inventory:craftItem', function(source, id, index, reci
 					end
 				end
 
-				Inventory.AddItem(left, craftedItem, craftCount, recipe.metadata or {}, craftedItem.stack and toSlot or nil)
+				Inventory.AddItem(left, craftedItem, craftCount, recipe.metadata or {}, craftedItem.stack and toSlot or nil, nil, true) -- klsh: without room the result is left on the ground
 			end
 
 			return success

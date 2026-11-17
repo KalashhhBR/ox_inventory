@@ -5,6 +5,7 @@ require 'modules.interface.client'
 
 local Utils = require 'modules.utils.client'
 local Weapon = require 'modules.weapon.client'
+local Equipment = require 'modules.equipment.client' -- klsh
 local currentWeapon
 
 exports('getCurrentWeapon', function()
@@ -30,6 +31,16 @@ local invBusy = true
 
 ---@type boolean?
 local invOpen = false
+
+-- klsh: the inventory key only hides the screen while moves are still running (the server keeps the
+-- inventory open, so the queue goes on); Esc and the X on an item are what cancel
+local invHidden = false
+local queueBusy = false
+
+-- where the player was when the screen was hidden: walking away from another inventory closes it
+---@type vector3?
+local hiddenAt
+local hideDistance = lib.load('data.equipment').hideDistance or 2.0
 local IsPedCuffed = IsPedCuffed
 local playerPed = cache.ped
 
@@ -93,6 +104,7 @@ end
 local defaultInventory = {
 	type = 'newdrop',
 	slots = shared.dropslots,
+	grid = shared.grid and { w = shared.grid.drop.w, h = shared.grid.drop.h } or nil, -- klsh
 	weight = 0,
 	maxWeight = shared.dropweight,
 	items = {}
@@ -193,7 +205,10 @@ function client.openInventory(inv, data)
 
         local targetCoords = targetPed and GetEntityCoords(targetPed)
 
-        if not targetCoords or #(targetCoords - GetEntityCoords(playerPed)) > 1.8 or (not client.hasGroup(shared.police) and not Player(serverId).state.canSteal) then
+        -- klsh: a search opened by exports.ox_inventory:SearchPlayer skips the canSteal rule and uses its own distance
+        local klshSearch = client.klshSearch and client.klshSearch.target == serverId and client.klshSearch or nil
+
+        if not targetCoords or #(targetCoords - GetEntityCoords(playerPed)) > (klshSearch and klshSearch.distance or 1.8) or (not klshSearch and not client.hasGroup(shared.police) and not Player(serverId).state.canSteal) then
             return lib.notify({ id = 'inventory_right_access', type = 'error', description = locale('inventory_right_access') })
         end
     end
@@ -287,14 +302,22 @@ function client.openInventory(inv, data)
     if client.screenblur then Utils.blurIn() end
 
     currentInventory = right or defaultInventory
+    client.klshGround = left.ground and true or nil -- klsh
     left.items = PlayerData.inventory
     left.groups = PlayerData.groups
+
+    Equipment.outfitPayload(right) -- klsh
 
     SendNUIMessage({
         action = 'setupInventory',
         data = {
             leftInventory = left,
-            rightInventory = currentInventory
+            rightInventory = currentInventory,
+            equipmentInventory = Equipment.payload(left.equipment), -- klsh
+            backpackInventory = left.backpack, -- klsh
+            groundInventory = left.ground, -- klsh
+            otherEquipmentInventory = Equipment.payload(left.search and left.search.equipment), -- klsh: player being searched
+            otherBackpackInventory = left.search and left.search.backpack -- klsh
         }
     })
 
@@ -352,13 +375,117 @@ RegisterNetEvent('ox_inventory:forceOpenInventory', function(left, right)
 		action = 'setupInventory',
 		data = {
 			leftInventory = left,
-			rightInventory = currentInventory
+			rightInventory = currentInventory,
+			equipmentInventory = Equipment.payload(left.equipment), -- klsh
+            backpackInventory = left.backpack, -- klsh
+            groundInventory = left.ground, -- klsh
+            otherEquipmentInventory = Equipment.payload(left.search and left.search.equipment), -- klsh: player being searched
+            otherBackpackInventory = left.search and left.search.backpack -- klsh
 		}
 	})
 end)
 
 local Animations = lib.load('data.animations')
 local Items = require 'modules.items.client'
+
+-- klsh: hotbar shortcuts (keys 1 to 5). An entry points to one item: by slot for weapons and other items
+-- that do not stack, by name for stackable ones (any stack is used). Kept per character on this client.
+---@type table<number, { name: string, slot?: number } | false>
+local hotbar = { false, false, false, false, false }
+
+local function hotbarKey()
+	return ('klsh_hotbar:%s'):format(PlayerData.identifier or PlayerData.name or 'default')
+end
+
+local function sendHotbar()
+	SendNUIMessage({ action = 'setHotbar', data = hotbar })
+end
+
+local function saveHotbar()
+	SetResourceKvp(hotbarKey(), json.encode(hotbar))
+	sendHotbar()
+end
+
+local function loadHotbar()
+	local saved = GetResourceKvpString(hotbarKey())
+	local decoded = saved and json.decode(saved)
+
+	for i = 1, 5 do
+		local entry = type(decoded) == 'table' and decoded[i]
+		local valid = type(entry) == 'table' and type(entry.name) == 'string' and (entry.slot == nil or math.type(entry.slot) == 'integer')
+
+		hotbar[i] = valid and { name = entry.name, slot = entry.slot } or false
+	end
+
+	sendHotbar()
+end
+
+---@param index number
+---@return number? slot the slot the shortcut uses right now
+local function hotbarSlot(index)
+	local entry = hotbar[index]
+
+	if not entry then return end
+
+	local slot = entry.slot
+
+	if not slot then
+		slot = Inventory.GetSlotIdWithItem(entry.name)
+	end
+
+	local item = slot and PlayerData.inventory[slot]
+
+	return item and item.name == entry.name and slot or nil
+end
+
+-- a shortcut by slot ends when that item leaves the inventory
+local function checkHotbar()
+	local changed = false
+
+	for i = 1, 5 do
+		local entry = hotbar[i]
+
+		if entry and entry.slot then
+			local item = PlayerData.inventory[entry.slot]
+
+			if not item or item.name ~= entry.name then
+				hotbar[i] = false
+				changed = true
+			end
+		end
+	end
+
+	if changed then saveHotbar() end
+end
+
+RegisterNUICallback('setHotbar', function(data, cb)
+	cb(1)
+
+	local index = type(data) == 'table' and data.index
+
+	if math.type(index) ~= 'integer' or index < 1 or index > 5 then return end
+
+	local item = data.slot and PlayerData.inventory[data.slot]
+
+	if not item then
+		hotbar[index] = false
+		return saveHotbar()
+	end
+
+	local itemData = Items(item.name)
+	local entry = { name = item.name, slot = (not itemData or not itemData.stack) and item.slot or nil }
+
+	-- one shortcut per item
+	for i = 1, 5 do
+		local other = hotbar[i]
+
+		if other and other.name == entry.name and other.slot == entry.slot then hotbar[i] = false end
+	end
+
+	hotbar[index] = entry
+	saveHotbar()
+end)
+
 local usingItem = false
 
 ---@param data { name: string, label: string, count: number, slot: number, metadata: table<string, any>, weight: number }
@@ -514,6 +641,13 @@ local function useSlot(slot, noAnim)
 		data.slot = slot
 
 		if item.metadata.container then
+			-- klsh: using an outfit bag swaps the outfit ("Open" in the context menu shows its slots)
+			if Equipment.isOutfitBag(item) then
+				if invOpen then client.closeInventory() end
+
+				return Equipment.useOutfitBag(item.slot)
+			end
+
 			return client.openInventory('container', item.slot)
 		elseif data.client then
 			if invOpen and data.close then client.closeInventory() end
@@ -619,7 +753,10 @@ local function useSlot(slot, noAnim)
 
 					currentAmmo = GetAmmoInPedWeapon(playerPed, currentWeapon.hash)
 					local missingAmmo = clipSize - currentAmmo
-					local addAmmo = resp.count > missingAmmo and missingAmmo or resp.count
+					-- klsh: ammo is split in stacks; a reload takes from all of them (the server removes by item name)
+					local ammoMetadata = resp.metadata and next(resp.metadata) and resp.metadata or nil
+					local availableAmmo = math.max(resp.count, Inventory.Search('count', resp.name, ammoMetadata) or 0)
+					local addAmmo = availableAmmo > missingAmmo and missingAmmo or availableAmmo
 					local newAmmo = currentAmmo + addAmmo
 
 					if newAmmo == currentAmmo then return end
@@ -775,13 +912,41 @@ local function registerCommands()
 		end
 	end
 
+	local function hideInventory()
+		invHidden = true
+		hiddenAt = GetEntityCoords(playerPed)
+		SetNuiFocus(false, false)
+		SetNuiFocusKeepInput(false)
+		Utils.blurOut()
+		SendNUIMessage({ action = 'setInventoryVisible', data = false })
+	end
+
+	local function showInventory()
+		invHidden = false
+		SetNuiFocus(true, true)
+		SetNuiFocusKeepInput(true)
+
+		if client.screenblur then Utils.blurIn() end
+
+		SendNUIMessage({ action = 'setInventoryVisible', data = true })
+		TriggerEvent('ox_inventory:klsh:inventoryShown')
+	end
+
+	-- klsh: inventory key pressed with the inventory open
+	local function closeByKey()
+		if invHidden then return showInventory() end
+		if queueBusy then return hideInventory() end
+
+		client.closeInventory()
+	end
+
 	local primary = lib.addKeybind({
 		name = 'inv',
 		description = locale('open_player_inventory'),
 		defaultKey = client.keys[1],
 		onPressed = function()
 			if invOpen then
-				return client.closeInventory()
+				return closeByKey()
 			end
 
 			local canOpenGlovebox = (not client.gloveboxseatrestriction and cache.vehicle) or (cache.vehicle and (cache.seat == -1 or cache.seat == 0))
@@ -813,7 +978,7 @@ local function registerCommands()
             end
 
 			if invOpen then
-				return client.closeInventory()
+				return closeByKey()
 			end
 
 			if invBusy or not canOpenInventory() then
@@ -885,7 +1050,11 @@ local function registerCommands()
 			defaultKey = tostring(i),
 			onPressed = function()
 				if invOpen or EnableWeaponWheel or not invHotkeys or IsNuiFocused() then return end
-				useSlot(i)
+
+				-- klsh: the key uses the item assigned to that shortcut, wherever it is in the grid
+				local slot = hotbarSlot(i)
+
+				if slot then useSlot(slot) end
 			end
 		})
 	end
@@ -898,6 +1067,14 @@ function client.closeInventory()
 
 	if invOpen then
 		invOpen = nil
+
+		-- klsh: closed for real (distance, vehicle, death...) while hidden with moves still to run
+		if invHidden and queueBusy then
+			lib.notify({ id = 'queue_cancelled', type = 'error', description = locale('queue_cancelled') })
+		end
+
+		invHidden = false
+		queueBusy = false
 		SetNuiFocus(false, false)
 		SetNuiFocusKeepInput(false)
 		Utils.blurOut()
@@ -959,6 +1136,7 @@ local function updateInventory(data, weight)
 	end
 
 	SendNUIMessage({ action = 'refreshSlots', data = { items = data, itemCount = itemCount} })
+	checkHotbar() -- klsh
 
     if weight ~= PlayerData.weight then client.setPlayerData('weight', weight) end
 
@@ -1245,7 +1423,8 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 			description = v.description,
 			buttons = buttons,
 			ammoName = v.ammoname,
-			image = v.client?.image
+			image = v.client?.image,
+			size = shared.grid and not shared.grid.forceUnit and v.size or nil, -- klsh: cells taken in a grid
 		}
 	end
 
@@ -1348,12 +1527,15 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 			leftInventory = {
 				id = cache.playerId,
 				slots = shared.playerslots,
+				grid = shared.grid and { w = shared.grid.player.w, h = shared.grid.player.h, wallet = shared.grid.player.w * shared.grid.player.h } or nil, -- klsh
 				items = PlayerData.inventory,
 				maxWeight = shared.playerweight,
 			},
 			imagepath = client.imagepath
 		}
 	})
+
+	loadHotbar() -- klsh
 
 	PlayerData.loaded = true
 
@@ -1386,6 +1568,9 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 		elseif invOpen == true then
 			if not canOpenInventory() then
 				client.closeInventory()
+			elseif invHidden and hiddenAt and (currentInventory ~= defaultInventory or client.klshGround) and #(GetEntityCoords(playerPed) - hiddenAt) > hideDistance then
+				-- klsh: hidden by the inventory key with a stash, trunk, drop or search still open
+				client.closeInventory()
 			else
 				playerCoords = GetEntityCoords(playerPed)
 
@@ -1397,7 +1582,9 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 						local ped = GetPlayerPed(id)
 						local pedCoords = GetEntityCoords(ped)
 
-						if not id or #(playerCoords - pedCoords) > maxDistance or (not client.hasGroup(shared.police) and not Player(currentInventory.id).state.canSteal) then
+						local klshSearch = client.klshSearch and client.klshSearch.target == currentInventory.id and client.klshSearch or nil -- klsh
+
+						if not id or #(playerCoords - pedCoords) > (klshSearch and klshSearch.distance + 0.2 or maxDistance) or (not klshSearch and not client.hasGroup(shared.police) and not Player(currentInventory.id).state.canSteal) then
 							client.closeInventory()
 							lib.notify({ id = 'inventory_lost_access', type = 'error', description = locale('inventory_lost_access') })
 						else
@@ -1462,7 +1649,7 @@ RegisterNetEvent('ox_inventory:setPlayerInventory', function(currentDrops, inven
 	client.tick = SetInterval(function()
 		DisablePlayerVehicleRewards(playerId)
 
-		if invOpen then
+		if invOpen and not invHidden then
 			DisableAllControlActions(0)
 			HideHudAndRadarThisFrame()
 
@@ -1683,6 +1870,37 @@ RegisterNUICallback('useItem', function(slot, cb)
 	cb(1)
 end)
 
+-- klsh: "Use" on a backpack that is opened on the right: shows the plain inventory again and wears it
+RegisterNUICallback('wearOpenedContainer', function(slot, cb)
+	cb(1)
+
+	if type(slot) ~= 'number' or not invOpen or currentInventory.type ~= 'container' then return end
+
+	client.closeInventory()
+	Wait(300)
+	client.openInventory()
+
+	local timeout = GetGameTimer() + 2000
+
+	while not invOpen and GetGameTimer() < timeout do Wait(50) end
+
+	if not invOpen then return end
+
+	Wait(300)
+	SendNUIMessage({ action = 'klshUse', data = slot })
+end)
+
+-- klsh: "Open" in the context menu (using a container opens it too, except for the outfit bag)
+RegisterNUICallback('openContainer', function(slot, cb)
+	cb(1)
+
+	local item = type(slot) == 'number' and PlayerData.inventory[slot]
+
+	if item and item.metadata and item.metadata.container then
+		client.openInventory('container', item.slot)
+	end
+end)
+
 local function giveItemToTarget(serverId, slotId, count)
     if type(slotId) ~= 'number' then return TypeError('slotId', 'number', type(slotId)) end
     if count and type(count) ~= 'number' then return TypeError('count', 'number', type(count)) end
@@ -1691,7 +1909,7 @@ local function giveItemToTarget(serverId, slotId, count)
         currentWeapon = Weapon.Disarm(currentWeapon)
     end
 
-    Utils.PlayAnim(0, 'mp_common', 'givetake1_a', 1.0, 1.0, 2000, 50, 0.0, 0, 0, 0)
+    -- klsh: the hand over animation runs with the timed progress asked by the server
 
     local notification = lib.callback.await('ox_inventory:giveItem', false, slotId, serverId, count or 0)
 
@@ -1792,6 +2010,16 @@ RegisterNUICallback('exit', function(_, cb)
 	cb(1)
 end)
 
+-- klsh: the NUI tells when its queue of moves starts and when it runs out
+RegisterNUICallback('klshQueue', function(data, cb)
+	cb(1)
+
+	queueBusy = type(data) == 'table' and data.busy == true
+
+	-- hidden by the inventory key and nothing left to do: now it really closes
+	if not queueBusy and invHidden then client.closeInventory() end
+end)
+
 lib.callback.register('ox_inventory:startCrafting', function(id, recipe)
 	recipe = CraftingBenches[id].items[recipe]
 
@@ -1818,7 +2046,8 @@ RegisterNUICallback('swapItems', function(data, cb)
 
     swapActive = true
 
-	if data.toType == 'newdrop' then
+	-- klsh: the ground section may create a new drop, which needs the same checks and coords
+	if data.toType == 'newdrop' or data.toType == 'ground' then
 		if cache.vehicle or IsPedFalling(playerPed) then
 			swapActive = false
 			return cb(false)

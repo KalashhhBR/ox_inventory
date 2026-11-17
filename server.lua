@@ -5,15 +5,15 @@ require 'modules.crafting.server'
 require 'modules.shops.server'
 require 'modules.pefcl.server'
 
-if GetConvar('inventory:versioncheck', 'true') == 'true' then
-    lib.versionCheck('overextended/ox_inventory')
-end
+-- klsh: the fork has its own versions (klsh_version in fxmanifest.lua, CHANGELOG.md). Checking against the
+-- upstream releases would tell server owners to "update" to the original and lose the fork.
 
 local TriggerEventHooks = require 'modules.hooks.server'
 local db = require 'modules.mysql.server'
 local Items = require 'modules.items.server'
 local Inventory = require 'modules.inventory.server'
 local Utils = require 'modules.utils.server'
+local Equipment = require 'modules.equipment.server' -- klsh
 
 ---@param player table
 ---@param data table?
@@ -51,7 +51,7 @@ function server.setPlayerInventory(player, data)
 
                     inventory[v.slot] = { name = item.name, label = item.label, weight = weight, slot = v.slot, count = v
                     .count, description = item.description, metadata = v.metadata, stack = item.stack, close = item
-                    .close }
+                    .close, x = v.x, y = v.y, rotated = v.rotated } -- klsh: grid position
                 end
             end
         end
@@ -71,6 +71,9 @@ function server.setPlayerInventory(player, data)
                 Wait(0)
             end
         until inv.player.ped ~= 0
+
+        inv.player.identifier = inv.player.identifier or player.identifier -- klsh: per character client settings (hotbar)
+        Equipment.onPlayerLoaded(inv) -- klsh
 
         if server.syncInventory then server.syncInventory(inv) end
         TriggerClientEvent('ox_inventory:setPlayerInventory', player.source, Inventory.Drops, inventory, totalWeight,
@@ -237,7 +240,7 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
                 right = Inventory(data.metadata.container)
 
                 if not right then
-                    right = Inventory.Create(data.metadata.container, data.label, invType, data.metadata.size[1], 0,
+                    right = Inventory.Create(data.metadata.container, data.label, invType, Inventory.Grid.containerSize(data.name, data.metadata.size[1]), 0, -- klsh: grid size by item name
                         data.metadata.size[2], false)
                 end
             else
@@ -276,7 +279,8 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
         if left == right then return end
 
         if right.player then
-            if right.open then return end
+            -- klsh: a search opened through SearchPlayer does not depend on the target's inventory being closed
+            if right.open and not Equipment.isSearchAllowed(source, right.id) then return end
 
             right.coords = not ignoreSecurityChecks and GetEntityCoords(right.player.ped) or nil
         end
@@ -299,16 +303,24 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
         label = left.label,
         type = left.type,
         slots = left.slots,
+        grid = Inventory.Grid.payload(left), -- klsh
         weight = left.weight,
-        maxWeight = left.maxWeight
+        maxWeight = left.maxWeight,
+        equipment = Equipment.payload(left), -- klsh
+        backpack = Equipment.backpackPayload(left), -- klsh
+        transferMinWeight = Equipment.getTransferMinWeight(), -- klsh
+        ground = Equipment.groundPayload(left, right), -- klsh
+        search = Equipment.searchPayload(left, right) -- klsh: equipment and backpack of the player being searched
     }, right and {
         id = right.id,
         label = right.player and '' or right.label,
         type = right.player and 'otherplayer' or right.type,
         slots = right.slots,
+        grid = Inventory.Grid.payload(right), -- klsh
         weight = right.weight,
         maxWeight = right.maxWeight,
         items = right.items,
+        outfit = Equipment.isOutfit(right) or nil, -- klsh: outfit bag opened on the right
         coords = closestCoords or right.coords,
         distance = right.distance,
         instance = right.instance
@@ -330,7 +342,8 @@ lib.callback.register('ox_inventory:openInventory', function(source, invType, da
         local isPolice = server.hasGroup(left, shared.police)
         local isTargetStealable = Player(serverId).state.canSteal
 
-        if not isPolice and not isTargetStealable then return end
+        -- klsh: a search opened through exports.ox_inventory:SearchPlayer is allowed as well
+        if not isPolice and not isTargetStealable and not Equipment.isSearchAllowed(source, serverId) then return end
     end
 
     return openInventory(source, invType, data)
@@ -382,6 +395,7 @@ lib.callback.register('ox_inventory:getInventory', function(source, id)
         label = inventory.label,
         type = inventory.type,
         slots = inventory.slots,
+        grid = Inventory.Grid.payload(inventory), -- klsh
         weight = inventory.weight,
         maxWeight = inventory.maxWeight,
         owned = inventory.owner and true or false,
@@ -623,8 +637,9 @@ lib.addCommand({ 'additem', 'giveitem' }, {
         local inventory = Inventory(args.target) --[[@as OxInventory]]
         local count = args.count and math.max(args.count, 1) or 1
 
+        -- klsh: what does not fit in the grid is left on the ground
         local success, response = Inventory.AddItem(inventory, item.name, count,
-            args.type and { type = tonumber(args.type) or args.type })
+            args.type and { type = tonumber(args.type) or args.type }, nil, nil, true)
 
         if not success then
             return Citizen.Trace(('Failed to give %sx %s to player %s (%s)'):format(count, item.name, args.target,

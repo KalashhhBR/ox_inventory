@@ -1,4 +1,6 @@
-# Contributing to our projects
+# Contributing
+
+> **Fork klsh:** este repositório é um fork do ox_inventory. Bugs e sugestões sobre o que o fork acrescenta (grade, roupas, mochilas, bolsa de estilo e o restante do [CHANGELOG.md](./CHANGELOG.md)) vão nas issues **deste** repositório. Algo que também acontece no original deve ser relatado em https://github.com/overextended/ox_inventory. Ao relatar um bug, informe a `klsh_version` do `fxmanifest.lua`, o framework e os passos para reproduzir. As regras abaixo são as do projeto original e valem aqui, com o mantenedor do fork no lugar de "Owner".
 
 We welcome you to contribute to our projects, whether reporting a bug, suggesting an improvement, or submitting fixes, improvements, or new code. To ensure a smooth collaboration process please follow these guidelines.
 
@@ -6,7 +8,7 @@ We welcome you to contribute to our projects, whether reporting a bug, suggestin
 
 ### Search for existing issues
 
-Before creating a new issue, please search existing [issues](https://github.com/overextended/ox_inventory/issues) to see if it has already been reported.
+Before creating a new issue, please search existing issues of this repository to see if it has already been reported.
 
 ### Add details to existing issues
 
@@ -51,11 +53,11 @@ Pull requests that do not contribute meaningful improvements to the project's st
 - Fork the repository and, optionally, create a new branch for your changes.
 - If applicable, include example code to demonstrate your changes.
 - Ensure your code's style is consistent with the project, e.g. uses the same indentation and string quotations.
-- If you have modified or introduced new APIs, open a pull request to our [documentation](https://github.com/overextended/docs). We will not accept undocumented code.
+- If you have modified or introduced new APIs, document them in `INTEGRATION.md` and `CONFIG.md` and add an entry to `CHANGELOG.md`. We will not accept undocumented code.
 
 ## Contributor License Agreement
 
-This Contributor License Agreement ("Agreement") is entered into between the contributor ("Contributor") and Overextended ("Owner") for the purpose of contributing to this repository (the "Project").
+This Contributor License Agreement ("Agreement") is entered into between the contributor ("Contributor") and the maintainers of this fork ("Owner") for the purpose of contributing to this repository (the "Project").
 
 By submitting any code, documentation, or other materials (collectively, the "Contribution") to this project, the Contributor agrees to the following terms:
 

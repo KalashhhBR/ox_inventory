@@ -12,9 +12,10 @@ export default defineConfig({
     emptyOutDir: true,
     rolldownOptions: {
       output: {
-        assetFileNames: 'assets/[name][extname]',
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
+        // klsh: flat output (no assets/ folder) so deploy tools can reach the files
+        assetFileNames: '[name][extname]',
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
       },
     },
   },

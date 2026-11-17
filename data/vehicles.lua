@@ -35,56 +35,58 @@ return {
 		[`trophytruck2`] = 0,
 	},
 
-	-- slots, maxWeight; default weight is 8000 per slot
+	-- klsh: { { width, height }, maxWeight } per vehicle class. The first value is the grid size in cells;
+	-- a plain number still works and means slots (10 per row, see data/grid.lua).
+	-- `models` overrides the class for one vehicle model: [`model`] = { { width, height }, maxWeight }
 	glovebox = {
-		[0] = {11, 88000},		-- Compact
-		[1] = {11, 88000},		-- Sedan
-		[2] = {11, 88000},		-- SUV
-		[3] = {11, 88000},		-- Coupe
-		[4] = {11, 88000},		-- Muscle
-		[5] = {11, 88000},		-- Sports Classic
-		[6] = {11, 88000},		-- Sports
-		[7] = {11, 88000},		-- Super
-		[8] = {5, 40000},		-- Motorcycle
-		[9] = {11, 88000},		-- Offroad
-		[10] = {11, 88000},		-- Industrial
-		[11] = {11, 88000},		-- Utility
-		[12] = {11, 88000},		-- Van
-		[14] = {31, 248000},	-- Boat
-		[15] = {31, 248000},	-- Helicopter
-		[16] = {51, 408000},	-- Plane
-		[17] = {11, 88000},		-- Service
-		[18] = {11, 88000},		-- Emergency
-		[19] = {11, 88000},		-- Military
-		[20] = {11, 88000},		-- Commercial (trucks)
+		[0] = {{ 5, 2 }, 88000},		-- Compact
+		[1] = {{ 5, 2 }, 88000},		-- Sedan
+		[2] = {{ 5, 2 }, 88000},		-- SUV
+		[3] = {{ 5, 2 }, 88000},		-- Coupe
+		[4] = {{ 5, 2 }, 88000},		-- Muscle
+		[5] = {{ 5, 2 }, 88000},		-- Sports Classic
+		[6] = {{ 5, 2 }, 88000},		-- Sports
+		[7] = {{ 5, 2 }, 88000},		-- Super
+		[8] = {{ 3, 2 }, 40000},		-- Motorcycle
+		[9] = {{ 5, 2 }, 88000},		-- Offroad
+		[10] = {{ 5, 2 }, 88000},		-- Industrial
+		[11] = {{ 5, 2 }, 88000},		-- Utility
+		[12] = {{ 5, 2 }, 88000},		-- Van
+		[14] = {{ 6, 5 }, 248000},	-- Boat
+		[15] = {{ 6, 5 }, 248000},	-- Helicopter
+		[16] = {{ 8, 6 }, 408000},	-- Plane
+		[17] = {{ 5, 2 }, 88000},		-- Service
+		[18] = {{ 5, 2 }, 88000},		-- Emergency
+		[19] = {{ 5, 2 }, 88000},		-- Military
+		[20] = {{ 5, 2 }, 88000},		-- Commercial (trucks)
 		models = {
-			[`xa21`] = {11, 88000}
+			[`xa21`] = {{ 5, 2 }, 88000}
 		}
 	},
 
 	trunk = {
-		[0] = {21, 168000},		-- Compact
-		[1] = {41, 328000},		-- Sedan
-		[2] = {51, 408000},		-- SUV
-		[3] = {31, 248000},		-- Coupe
-		[4] = {41, 328000},		-- Muscle
-		[5] = {31, 248000},		-- Sports Classic
-		[6] = {31, 248000},		-- Sports
-		[7] = {21, 168000},		-- Super
-		[8] = {5, 40000},		-- Motorcycle
-		[9] = {51, 408000},		-- Offroad
-		[10] = {51, 408000},	-- Industrial
-		[11] = {41, 328000},	-- Utility
-		[12] = {61, 488000},	-- Van
+		[0] = {{ 6, 4 }, 168000},		-- Compact
+		[1] = {{ 8, 5 }, 328000},		-- Sedan
+		[2] = {{ 10, 6 }, 408000},		-- SUV
+		[3] = {{ 7, 4 }, 248000},		-- Coupe
+		[4] = {{ 8, 5 }, 328000},		-- Muscle
+		[5] = {{ 6, 4 }, 248000},		-- Sports Classic
+		[6] = {{ 6, 3 }, 248000},		-- Sports
+		[7] = {{ 5, 3 }, 168000},		-- Super
+		[8] = {{ 3, 2 }, 40000},		-- Motorcycle
+		[9] = {{ 10, 5 }, 408000},		-- Offroad
+		[10] = {{ 10, 6 }, 408000},	-- Industrial
+		[11] = {{ 9, 5 }, 328000},	-- Utility
+		[12] = {{ 10, 8 }, 488000},	-- Van
 		-- [14] -- Boat
 		-- [15] -- Helicopter
 		-- [16] -- Plane
-		[17] = {41, 328000},	-- Service
-		[18] = {41, 328000},	-- Emergency
-		[19] = {41, 328000},	-- Military
-		[20] = {61, 488000},	-- Commercial
+		[17] = {{ 8, 5 }, 328000},	-- Service
+		[18] = {{ 8, 5 }, 328000},	-- Emergency
+		[19] = {{ 9, 5 }, 328000},	-- Military
+		[20] = {{ 10, 8 }, 488000},	-- Commercial
 		models = {
-			[`xa21`] = {11, 10000}
+			[`xa21`] = {{ 4, 3 }, 10000}
 		},
 	}
 }
