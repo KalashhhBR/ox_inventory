@@ -179,6 +179,8 @@ local function loadInventoryData(data, player, ignoreSecurityChecks)
 			local storage = Vehicles[data.type].models[model] or Vehicles[data.type][class]
             local dbId
 
+			if not storage then return end -- klsh: this vehicle has no trunk / glovebox
+
             if server.getOwnedVehicleId then
                 dbId = server.getOwnedVehicleId(entity)
             else
@@ -1649,6 +1651,20 @@ exports('CreateDropFromPlayer', function(playerId)
 		instance = Player(playerId).state.instance
 	}
 
+	-- klsh: the worn backpack (content included) and the vest fall with the rest
+	local worn = Equipment.takeWorn(playerInventory)
+
+	if #worn > 0 then
+		local wornItems = {}
+
+		for i = 1, #worn do
+			wornItems[i] = { worn[i].name, 1, worn[i].metadata }
+		end
+
+		-- a drop of their own: the first one may have no room left for a backpack
+		CustomDrop('Drop', wornItems, inventory.coords, nil, nil, Inventory.Drops[dropId].instance)
+	end
+
 	Inventory.Clear(playerInventory)
 	TriggerClientEvent('ox_inventory:createDrop', -1, dropId, Inventory.Drops[dropId])
 
@@ -1670,6 +1686,37 @@ local TriggerEventHooks = require 'modules.hooks.server'
 ---@param playerInventory OxInventory
 ---@param fromData SlotWithItem?
 ---@param data SwapSlotData
+---klsh: a drop next to `coords` (same instance) where the whole amount fits, the closest one first.
+---@return OxInventory? drop
+local function klshFindMergeDrop(source, coords, item, count, metadata, weight)
+	local distance = Grid and Grid.mergeDistance
+
+	if not distance or not item or type(coords) ~= 'vector3' then return end
+
+	local instance = Player(source).state.instance
+	local candidates = {}
+
+	for dropId, drop in pairs(Inventory.Drops) do
+		if drop.coords and drop.instance == instance then
+			local away = #(coords - drop.coords)
+
+			if away <= distance then candidates[#candidates + 1] = { id = dropId, away = away } end
+		end
+	end
+
+	table.sort(candidates, function(a, b) return a.away < b.away end)
+
+	for i = 1, #candidates do
+		local inventory = Inventories[candidates[i].id]
+
+		if inventory and inventory.type == 'drop' and inventory.grid and inventory.weight + weight <= inventory.maxWeight then
+			local plan, remaining = Grid.planAdd(inventory, item, count, metadata)
+
+			if remaining == 0 and #plan > 0 then return inventory end
+		end
+	end
+end
+
 local function dropItem(source, playerInventory, fromData, data)
     if not fromData then return end
 
@@ -1680,19 +1727,24 @@ local function dropItem(source, playerInventory, fromData, data)
 
     if toData.weight > shared.dropweight then return end
 
-    local dropId = generateInvId('drop')
+	-- klsh: a drop right there with room for the item takes it, instead of a pile of small drops
+	local dropItemData = Items(toData.name)
+	local mergeDrop = klshFindMergeDrop(source, data.coords, dropItemData, data.count, fromData.metadata, toData.weight)
+
+    local dropId = mergeDrop and mergeDrop.id or generateInvId('drop')
 
 	local hooks <close> = TriggerEventHooks('swapItems', {
 		source = source,
 		fromInventory = playerInventory.id,
 		fromSlot = fromData,
 		fromType = playerInventory.type,
-		toInventory = 'newdrop',
+		toInventory = mergeDrop and mergeDrop.id or 'newdrop',
 		toSlot = data.toSlot,
 		toType = 'drop',
 		count = data.count,
         action = 'move',
         dropId = dropId,
+        klshThrow = data.klshThrow, -- klsh: true when the item was thrown instead of dropped
 	})
 
 	if not hooks.success then return end
@@ -1715,16 +1767,49 @@ local function dropItem(source, playerInventory, fromData, data)
 		playerInventory.weapon = nil
 	end
 
-	local inventory = Inventory.Create(dropId, ('Drop %s'):format(dropId:gsub('%D', '')), 'drop', shared.dropslots, toData.weight, shared.dropweight, false, {[data.toSlot] = toData})
+	-- klsh: the nearby drop may have changed while the hooks ran; if the item no longer fits, a new drop it is
+	local mergePlan
 
-	if not inventory then hooks.success = false return end
+	if mergeDrop then
+		local remaining
 
-	inventory.coords = data.coords
-	Inventory.Drops[dropId] = {coords = inventory.coords, instance = data.instance}
-	playerInventory.changed = true
+		mergePlan, remaining = Grid.planAdd(mergeDrop, dropItemData, data.count, toData.metadata)
 
-	-- klsh: a linked inventory (equipment) is never "open" itself; its owner still gets the new drop opened
-	TriggerClientEvent('ox_inventory:createDrop', -1, dropId, Inventory.Drops[dropId], Equipment.onDropCreated(source, dropId, (playerInventory.open or playerInventory.klshLinkedTo) and source), slot)
+		if Inventories[mergeDrop.id] ~= mergeDrop or remaining > 0 or #mergePlan == 0 or mergeDrop.weight + toData.weight > mergeDrop.maxWeight then
+			mergeDrop, mergePlan = nil, nil
+			dropId = generateInvId('drop')
+		end
+	end
+
+	if mergeDrop and mergePlan then
+		local updates = {}
+
+		for i = 1, #mergePlan do
+			Grid.setSlot(mergeDrop, dropItemData, mergePlan[i], i == 1 and toData.metadata or table.clone(toData.metadata))
+			updates[i] = { item = mergeDrop.items[mergePlan[i].slot], inventory = mergeDrop.id }
+		end
+
+		mergeDrop.changed = true
+		mergeDrop.time = os.time()
+		mergeDrop:syncSlotsWithClients(updates, false)
+		playerInventory.changed = true
+
+		-- the player who dropped it gets that drop on screen, as with a new one
+		local owner = Equipment.onDropCreated(source, dropId, (playerInventory.open or playerInventory.klshLinkedTo) and source)
+
+		TriggerClientEvent('ox_inventory:klsh:droppedInto', source, dropId, mergeDrop.coords, owner and true or false, slot)
+	else
+		local inventory = Inventory.Create(dropId, ('Drop %s'):format(dropId:gsub('%D', '')), 'drop', shared.dropslots, toData.weight, shared.dropweight, false, {[data.toSlot] = toData})
+
+		if not inventory then hooks.success = false return end
+
+		inventory.coords = data.coords
+		Inventory.Drops[dropId] = {coords = inventory.coords, instance = data.instance}
+		playerInventory.changed = true
+
+		-- klsh: a linked inventory (equipment) is never "open" itself; its owner still gets the new drop opened
+		TriggerClientEvent('ox_inventory:createDrop', -1, dropId, Inventory.Drops[dropId], Equipment.onDropCreated(source, dropId, (playerInventory.open or playerInventory.klshLinkedTo) and source), slot)
+	end
 
 	if server.loglevel > 0 then
 		lib.logger(playerInventory.owner, 'swapSlots', ('%sx %s transferred from "%s" to "%s"'):format(data.count, toData.name, playerInventory.label, dropId))
@@ -1745,6 +1830,9 @@ local function dropItem(source, playerInventory, fromData, data)
 end
 
 local GetLocks = require 'modules.locks'
+
+-- klsh: throwing items reuses dropItem (the drop is created with the slot data itself)
+require('modules.throw.server').init(Inventory, dropItem, function() return Grid end)
 
 ---@param source number
 ---@param data SwapSlotData
@@ -1775,6 +1863,27 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 
     -- klsh: slots sent by the client are checked against the grid (range, wallet, stack limit)
     local klshAllowed, klshReason = Grid.preSwap(playerInventory, fromInventory, toInventory, data)
+
+    -- klsh: the drop on screen has no room at all for the item: it goes to a new drop next to it
+    if not klshAllowed and klshReason == 'grid_no_fit' and toInventory.type == 'drop' and toInventory.grid and fromInventory ~= toInventory and fromInventory.type ~= 'drop' then
+        local klshFrom = fromInventory.items[data.fromSlot]
+        local klshItem = klshFrom and Items(klshFrom.name)
+        local klshPed = GetPlayerPed(source)
+
+        if klshItem and klshPed ~= 0 and GetVehiclePedIsIn(klshPed, false) == 0 then
+            local _, klshRemaining = Grid.planAdd(toInventory, klshItem, math.min(data.count, klshFrom.count), klshFrom.metadata)
+
+            if klshRemaining > 0 then
+                data.toType = 'newdrop'
+                data.toSlot, data.toX, data.toY, data.rotated = nil, nil, nil, nil
+                data.klshOriginal = nil
+                data.coords = GetEntityCoords(klshPed)
+                data.instance = Player(source).state.instance
+
+                klshAllowed, klshReason = Grid.preSwap(playerInventory, fromInventory, toInventory, data)
+            end
+        end
+    end
 
     if not klshAllowed then return false, klshReason end
 
@@ -2155,12 +2264,25 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 	end
 end)
 
-function Inventory.Confiscate(source)
+---klsh: the worn backpack (with its content) and the vest are confiscated too; clothing stays.
+---`options.discard` lists items that are destroyed instead of kept for the return (filtered when taken).
+---@param source number
+---@param options? { discard?: string[] | table<string, boolean> }
+---@return boolean? success false when something is already confiscated from this character
+function Inventory.Confiscate(source, options)
 	local inv = Inventory(source)
 
 	if not inv or not inv.player then return end
 
+	-- klsh: confiscating twice would overwrite (and lose) what is waiting to be returned
+	if Equipment.hasConfiscated(inv) then return false end
+
+	local worn = Equipment.onConfiscate(inv, options)
+
 	db.saveStash(inv.owner, inv.owner, json.encode(minimal(inv)))
+
+	if worn then db.saveStash(inv.owner, 'equip-confiscated', json.encode(worn)) end
+
 	table.wipe(inv.items)
 	inv.weight = 0
 	inv.changed = true
@@ -2168,6 +2290,8 @@ function Inventory.Confiscate(source)
 	TriggerClientEvent('ox_inventory:inventoryConfiscated', inv.id)
 
 	if server.syncInventory then server.syncInventory(inv) end
+
+	return true
 end
 exports('ConfiscateInventory', Inventory.Confiscate)
 
@@ -2178,7 +2302,7 @@ function Inventory.Return(source)
 
 	local items = MySQL.scalar.await('SELECT data FROM ox_inventory WHERE name = ?', { inv.owner })
 
-    if not items then return end
+    if not items then return Equipment.onReturn(inv) end -- klsh: backpack and vest may still be waiting
 
 	MySQL.update.await('DELETE FROM ox_inventory WHERE name = ?', { inv.owner })
 
@@ -2209,6 +2333,8 @@ function Inventory.Return(source)
     TriggerClientEvent('ox_inventory:inventoryReturned', source, { inventory, totalWeight })
 
     if server.syncInventory then server.syncInventory(inv) end
+
+    Equipment.onReturn(inv) -- klsh: backpack and vest go back to their slots (or to the inventory)
 end
 
 exports('ReturnInventory', Inventory.Return)
@@ -2217,6 +2343,9 @@ exports('ReturnInventory', Inventory.Return)
 ---@param keep? string | string[] an item or list of items to ignore while clearing items
 function Inventory.Clear(inv, keep)
 	inv = Inventory(inv) --[[@as OxInventory]]
+
+	-- klsh: for a player, the worn backpack (with its content) and the vest go too; clothing stays
+	if inv and inv.player then Equipment.onClear(inv, keep) end
 
 	if not inv or not next(inv.items) then return end
 
@@ -2272,6 +2401,8 @@ function Inventory.Clear(inv, keep)
 
 	inv.weight = newWeight
 	inv.changed = true
+
+	if inv.player then Equipment.recalcBag(inv) end -- klsh: a kept backpack still weighs
 
 	inv:syncSlotsWithClients(updateSlots, true)
 

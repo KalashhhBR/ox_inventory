@@ -66,6 +66,9 @@ local backpackSizes = require('modules.equipment.shared').backpacks or {}
 ---@param itemName string
 ---@param slots number
 ---@return number | { w: number, h: number }
+-- metres within which a dropped item joins a drop that already exists (data/grid.lua, drop.merge)
+Grid.mergeDistance = config.drop and config.drop.merge or false
+
 function Grid.containerSize(itemName, slots)
     local backpack = backpackSizes[itemName]
 

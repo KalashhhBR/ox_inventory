@@ -13,7 +13,9 @@ return {
     player = { w = 8, h = 5 },
 
     -- drops no longer inherit `inventory:slots`
-    drop = { w = 8, h = 5 },
+    --   merge : an item dropped (or thrown) within this many metres of a drop that has room for it goes
+    --           into that drop instead of creating another one (false = always a new drop)
+    drop = { w = 8, h = 5, merge = 1.5 },
 
     -- Sizes that live next to what they belong to (see CONFIG.md):
     --   backpacks       data/equipment.lua  -> backpacks.<item>.grid

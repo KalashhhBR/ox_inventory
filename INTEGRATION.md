@@ -97,3 +97,51 @@ local ok, reason = exports.ox_inventory:SearchPlayer(source, target, {
 - Evento de server `ox_inventory:klsh:outfitSwapped (source, slot)`: disparado depois que o jogador troca
   de roupa pela bolsa.
 - Callback usado pelo client: `ox_inventory:klsh:useOutfitBag (slot)`.
+
+## Morte, limpeza e confisco (0.19.0)
+
+A roupa sempre fica no corpo. Mochila vestida e colete acompanham o resto do inventário:
+
+| Chamada | Mochila vestida (e o conteúdo) | Colete |
+|---|---|---|
+| `ClearInventory(source)` | destruídos | destruído |
+| `ClearInventory(source, keep)` | ficam se o nome do item estiver em `keep` | fica se estiver em `keep` |
+| `ConfiscateInventory(source, options?)` | guardados | guardado |
+| `ReturnInventory(source)` | voltam para o slot (ou para o inventário, se o slot estiver ocupado) | idem |
+| `CreateDropFromPlayer(source)` | vão para um drop próprio ao lado | idem |
+
+`ConfiscateInventory(source, options?)`:
+
+```lua
+-- everything is kept for the return, except the vest and the weapons listed
+local success = exports.ox_inventory:ConfiscateInventory(source, {
+    discard = { 'armour', 'WEAPON_PISTOL' },
+})
+```
+
+- `options.discard` (opcional): nomes de itens **destruídos na hora do confisco** em vez de guardados. Vale para o inventário principal, o colete, a mochila vestida e o conteúdo de qualquer mochila ou bolsa confiscada. Sem `options`, tudo é guardado.
+- Retorno: `true` quando confiscou; `false` quando já existe um confisco deste personagem esperando devolução (nada é alterado, para não sobrescrever o que está guardado). O original não tinha retorno e sobrescrevia.
+- `ReturnInventory(source)` substitui o inventário atual pelo que foi guardado, como no original. O que o jogador tiver no momento da devolução é perdido; quem chama deve ler antes com `GetInventoryItems` o que quiser preservar.
+- Registros no banco: `(owner, owner)` para o inventário (como no original) e `(owner, 'equip-confiscated')` para mochila e colete.
+
+Scripts de prisão que copiam a lista de itens e chamam `ClearInventory` **perdem a mochila e o colete do preso** (eles não estão em `GetInventoryItems`). Use `ConfiscateInventory` e `ReturnInventory`.
+
+## Arremesso (0.20.0)
+
+- O item arremessado sai do inventário pelo mesmo caminho do "Soltar": o hook `swapItems` recebe
+  `toInventory = 'newdrop'`, `toType = 'drop'`, `action = 'move'`, `dropId`, e o campo extra
+  `klshThrow = true`. Retornar `false` cancela o arremesso.
+- Callbacks usados pelo client: `ox_inventory:klsh:throwStart (slot, count)` e
+  `ox_inventory:klsh:throwLand (coords)`. O ponto de queda vem do client e é limitado no server pelo
+  alcance do peso arremessado e pela diferença de altura.
+
+Alvos (0.21.0):
+
+- Item que cai dentro de uma lixeira ou de um porta-malas aberto dispara o hook `swapItems` com
+  `toInventory` = id do alvo (`dumpster<netid>` ou `trunk<placa>`), `toType` = `dumpster` ou `trunk`,
+  `action = 'move'` e `klshThrow = true`.
+- `exports.ox_inventory:SetThrowBonus(source, value)` (server): soma `value` (ex.: `0.10`) à chance de
+  cair dentro para aquele jogador, até ele sair ou até nova chamada (`nil` ou `0` limpa). Ponto de
+  entrada para sistemas de perícia.
+- `ox_inventory:klsh:throwLand (coords, target?)` passou a receber o alvo que o client encontrou
+  (`{ type, netid }`); o servidor confere entidade, modelo, distância, trava e instância.

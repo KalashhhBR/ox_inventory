@@ -1294,6 +1294,19 @@ RegisterNetEvent('ox_inventory:createDrop', function(dropId, data, owner, slot)
 	end
 end)
 
+-- klsh: the item just dropped went into a drop that was already there
+RegisterNetEvent('ox_inventory:klsh:droppedInto', function(dropId, coords, open, slot)
+	if source == '' then return end
+
+	if currentWeapon?.slot == slot then
+		currentWeapon = Weapon.Disarm(currentWeapon)
+	end
+
+	if open and invOpen and coords and #(GetEntityCoords(playerPed) - coords) <= 2 and not cache.vehicle then
+		client.openInventory('drop', dropId)
+	end
+end)
+
 RegisterNetEvent('ox_inventory:removeDrop', function(dropId)
 	if client.drops then
 		local point = client.drops[dropId]
@@ -1889,6 +1902,53 @@ RegisterNUICallback('wearOpenedContainer', function(slot, cb)
 	Wait(300)
 	SendNUIMessage({ action = 'klshUse', data = slot })
 end)
+
+-- klsh: throwing items (context menu "Throw", or the key for what is in hand)
+local Throw = require 'modules.throw.client'
+
+Throw.init({
+	getWeapon = function() return currentWeapon end,
+	disarm = function()
+		if not currentWeapon then return end
+
+		-- the server only learns the ammo count when the shot timer runs out: report it now
+		if currentWeapon.metadata.ammo then
+			TriggerServerEvent('ox_inventory:updateWeapon', 'ammo', currentWeapon.metadata.ammo)
+		end
+
+		currentWeapon = Weapon.Disarm(currentWeapon, true)
+	end,
+	useSlot = function(slot) useSlot(slot) end,
+	isBusy = function() return invOpen ~= false or invBusy ~= false or usingItem end,
+	setBusy = function(busy) client.player:setr('invBusy', busy) end,
+	closeInventory = function()
+		if invOpen then
+			client.closeInventory()
+			Wait(100)
+		end
+	end,
+})
+
+RegisterNUICallback('throwItem', function(data, cb)
+	cb(1)
+
+	if type(data) == 'table' and type(data.slot) == 'number' then
+		Throw.start(data.slot, data.count)
+	end
+end)
+
+if Throw.config.enabled then
+	lib.addKeybind({
+		name = 'klsh_throw',
+		description = locale('throw_key'),
+		defaultKey = Throw.config.key or '',
+		onPressed = function()
+			if invOpen or IsNuiFocused() then return end
+
+			Throw.inHand()
+		end,
+	})
+end
 
 -- klsh: "Open" in the context menu (using a container opens it too, except for the outfit bag)
 RegisterNUICallback('openContainer', function(slot, cb)

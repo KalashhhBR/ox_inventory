@@ -744,10 +744,22 @@ lib.addCommand('takeinv', {
     help = 'Confiscates the target inventory, to restore with /restoreinv',
     params = {
         { name = 'target', type = 'playerId', help = 'The player to confiscate items from' },
+        { name = 'discard', type = 'longString', help = 'Item names (separated by spaces) destroyed instead of kept', optional = true }, -- klsh
     },
     restricted = 'group.admin',
 }, function(source, args)
-    Inventory.Confiscate(args.target)
+    -- klsh: optional list of items that are not kept for the return; refused while a return is pending
+    local discard
+
+    if args.discard then
+        discard = {}
+
+        for name in args.discard:gmatch('%S+') do discard[#discard + 1] = name end
+    end
+
+    if Inventory.Confiscate(args.target, discard and { discard = discard }) == false and source > 0 then
+        TriggerClientEvent('ox_lib:notify', source, { type = 'error', description = locale('confiscate_pending') })
+    end
 end)
 
 lib.addCommand({ 'restoreinv', 'returninv' }, {

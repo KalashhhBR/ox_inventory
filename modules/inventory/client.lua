@@ -27,13 +27,10 @@ if shared.networkdumpsters then
     end, 3000)
 end
 
-function Inventory.OpenDumpster(entity)
-    if shared.networkdumpsters then
-        local coords = GetEntityCoords(entity)
-        client.openInventory('dumpster', coords)
-        return
-    end
-
+---klsh: network id that names the inventory of a dumpster (the same one OpenDumpster uses).
+---@param entity number
+---@return number | false | nil netId
+function Inventory.GetDumpsterNetId(entity)
     local netId = NetworkGetEntityIsNetworked(entity) and NetworkGetNetworkIdFromEntity(entity)
 
     if not netId then
@@ -41,6 +38,18 @@ function Inventory.OpenDumpster(entity)
         entity = GetClosestObjectOfType(coords.x, coords.y, coords.z, 0.1, GetEntityModel(entity), true, true, true)
         netId = entity ~= 0 and NetworkGetNetworkIdFromEntity(entity)
     end
+
+    return netId
+end
+
+function Inventory.OpenDumpster(entity)
+    if shared.networkdumpsters then
+        local coords = GetEntityCoords(entity)
+        client.openInventory('dumpster', coords)
+        return
+    end
+
+    local netId = Inventory.GetDumpsterNetId(entity)
 
     if netId then
         client.openInventory('dumpster', 'dumpster' .. netId)
@@ -50,6 +59,37 @@ end
 local Utils = require 'modules.utils.client'
 local Vehicles = lib.load('data.vehicles')
 local backDoorIds = { 2, 3 }
+
+---klsh: the trunk of a vehicle, wherever the player is: its door(s) and where it is in the world.
+---@param entity number
+---@return number | number[] | nil doorId, vector3? position
+function Inventory.GetTrunk(entity)
+    if not NetworkGetEntityIsNetworked(entity) or IsEntityDead(entity) then return end
+
+    local vehicleHash = GetEntityModel(entity)
+    local vehicleClass = GetVehicleClass(entity)
+    local checkVehicle = Vehicles.Storage[vehicleHash]
+
+    if (checkVehicle == 0 or checkVehicle == 1) or (not Vehicles.trunk[vehicleClass] and not Vehicles.trunk.models[vehicleHash]) then return end
+
+    ---@type number | number[]
+    local doorId = checkVehicle and 4 or 5
+
+    if not Vehicles.trunk.boneIndex?[vehicleHash] and not GetIsDoorValid(entity, doorId --[[@as number]]) then
+        if vehicleClass ~= 11 and (doorId ~= 5 or GetEntityBoneIndexByName(entity, 'boot') ~= -1 or not GetIsDoorValid(entity, 2)) then
+            return
+        end
+
+        if vehicleClass ~= 11 then
+            doorId = backDoorIds
+        end
+    end
+
+    local min, max = GetModelDimensions(vehicleHash)
+    local offset = (max - min) * (not checkVehicle and vec3(0.5, 0, 0.5) or vec3(0.5, 1, 0.5)) + min
+
+    return doorId, GetOffsetFromEntityInWorldCoords(entity, offset.x, offset.y, offset.z)
+end
 
 function Inventory.CanAccessTrunk(entity)
     if cache.vehicle or not NetworkGetEntityIsNetworked(entity) then return end

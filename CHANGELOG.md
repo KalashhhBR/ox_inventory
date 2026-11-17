@@ -11,6 +11,49 @@ Cada versão traz **tudo o que mudou desde a versão anterior**, sempre nestas q
 
 Seção sem itens aparece como "Nada nesta versão".
 
+## 0.22.1 (2026-11-17)
+
+Mudanças desde a 0.18.1.
+
+### Adicionado
+
+**Arremesso de itens**
+- Menu de contexto → **Arremessar**: o inventário fecha e o item vai para a mão. Segurar o botão esquerdo carrega a força (com barra na tela), soltar joga; botão direito ou Backspace cancela.
+- **Tecla para o item na mão** (padrão `G`, configurável por jogador): arremessa a arma equipada, com a munição que ela tem.
+- O item vira um drop onde cair. Qualquer item dentro do peso máximo pode ser arremessado (5 kg por padrão); item mais pesado vai menos longe.
+- **Alvos:** item que cai junto de uma lixeira ou da boca de um porta-malas aberto e destrancado tem chance de entrar direto, menor quanto maior a distância e o peso. Errou ou não coube: cai ao lado, com aviso.
+- **De dentro do veículo:** qualquer banco, desde que haja uma abertura ao lado (vidro abaixado ou quebrado, porta aberta ou arrancada). Em moto, bicicleta e quadriciclo a direção é livre.
+- Config em `data/throw.lua`: tecla, peso máximo, intervalo, tempo de carga, alcance, raio e chance dos alvos, arremesso de dentro do veículo.
+- `exports.ox_inventory:SetThrowBonus(source, valor)`: soma chance de acertar o alvo para um jogador (ponto de entrada para sistemas de perícia).
+- Campo `klshThrow = true` no hook `swapItems` quando o item foi arremessado.
+
+**Morte, limpeza e confisco**
+- `ConfiscateInventory(source, { discard = { ... } })`: lista opcional de itens destruídos na hora do confisco em vez de guardados para a devolução. Vale para o inventário, o colete, a mochila vestida e o conteúdo de mochilas e bolsas confiscadas.
+- `/takeinv <id> [itens]` aceita a lista de descarte.
+- Mochila vestida (com o conteúdo) e colete passam a ser guardados no confisco e devolvidos por `ReturnInventory`.
+
+**Drops**
+- Item largado ou arremessado a até 1,5 m de um drop que tenha espaço entra nesse drop, em vez de criar outro ao lado (`drop.merge` em `data/grid.lua`).
+
+### Removido
+
+Nada nesta versão.
+
+### Ajuste
+
+- `ClearInventory` em jogador (por exemplo, no respawn do hospital) passa a destruir também a mochila vestida, com o conteúdo, e o colete; a roupa continua no corpo. Itens listados em `keep` são mantidos.
+- `ConfiscateInventory` devolve `true` quando confisca e `false`, sem alterar nada, quando o personagem já tem um confisco esperando devolução (antes o segundo confisco sobrescrevia o primeiro).
+- `ReturnInventory` devolve mochila e colete ao slot de equipamento; com o slot ocupado, vão para o inventário.
+- `CreateDropFromPlayer` põe mochila e colete num drop próprio ao lado.
+- Scripts de prisão que copiam a lista de itens e chamam `ClearInventory` fazem o preso perder mochila e colete: devem usar `ConfiscateInventory` e `ReturnInventory`.
+- Largar um item num drop aberto que não tem espaço para ele cria um drop novo ao lado, em vez de só recusar.
+- No hook `swapItems`, ao largar um item junto de um drop com espaço, `toInventory` é o id desse drop (antes era sempre `'newdrop'`).
+- O campo `repository` do `fxmanifest.lua` aponta para o repositório do fork.
+
+### Bugs consertados
+
+Nada nesta versão.
+
 ## 0.18.1 (2026-11-16)
 
 Primeira versão pública. A comparação é com o `overextended/ox_inventory` no commit `ca61e6d` (2.48.1+).

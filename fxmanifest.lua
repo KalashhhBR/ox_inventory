@@ -5,8 +5,8 @@ game 'gta5'
 name 'ox_inventory'
 author 'Overextended'
 version '2.48.1'
-klsh_version '0.18.1' -- klsh: fork version (SemVer), upstream base above
-repository 'https://github.com/overextended/ox_inventory' -- klsh: upstream; the fork's own repository is in README.md
+klsh_version '0.22.1' -- klsh: fork version (SemVer), upstream base above
+repository 'https://github.com/KalashhhBR/ox_inventory' -- klsh: fork of https://github.com/overextended/ox_inventory
 description 'Grid inventory with clothing as items (klsh fork of ox_inventory)'
 
 dependencies {

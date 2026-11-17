@@ -962,3 +962,35 @@ $equipmentSlot: 6.6vh;
   cursor: pointer;
   pointer-events: auto;
 }
+
+// klsh: force bar of a throw
+.throw-charge {
+  position: absolute;
+  left: 50%;
+  bottom: 12vh;
+  width: 22vh;
+  height: 1vh;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.55);
+  border-radius: 0.3vh;
+  overflow: hidden;
+}
+
+.throw-charge-fill {
+  width: 100%;
+  height: 100%;
+  background-color: $mainColor;
+  transform-origin: left;
+  animation-name: throw-charge-grow;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes throw-charge-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

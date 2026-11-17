@@ -12,6 +12,7 @@ import LeftInventory from './LeftInventory';
 import EquipmentPanel from './EquipmentPanel'; // klsh
 import HotbarPanel from './HotbarPanel'; // klsh
 import SearchPanel from './SearchPanel'; // klsh
+import ThrowCharge from './ThrowCharge'; // klsh
 import { clearMoveQueue } from '../../dnd/moveQueue'; // klsh
 import { State } from '../../typings';
 import BackpackGrid from './BackpackGrid'; // klsh
@@ -100,6 +101,7 @@ const Inventory: React.FC = () => {
         </div>
       </Fade>
       <InventoryHotbar />
+      <ThrowCharge />
     </>
   );
 };

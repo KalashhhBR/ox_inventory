@@ -57,6 +57,10 @@ const InventoryContext: React.FC = () => {
       case 'give':
         onGive({ name: item.name, slot: item.slot });
         break;
+      case 'throw':
+        // klsh: the client closes the inventory and enters the aim; itemAmount (when set) limits the count
+        fetchNui('throwItem', { slot: item.slot, count: store.getState().inventory.itemAmount });
+        break;
       case 'drop':
         isSlotWithItem(item) && onDrop({ item: item, inventory: 'player' });
         break;
@@ -106,6 +110,7 @@ const InventoryContext: React.FC = () => {
         )}
         <MenuItem onClick={() => handleClick({ action: 'give' })} label={Locale.ui_give || 'Give'} />
         <MenuItem onClick={() => handleClick({ action: 'drop' })} label={Locale.ui_drop || 'Drop'} />
+        <MenuItem onClick={() => handleClick({ action: 'throw' })} label={Locale.ui_throw || 'Throw'} />
         {item?.name !== 'money' && item?.name !== 'black_money' && (
           <MenuItem onClick={() => handleClick({ action: 'rename' })} label={Locale.ui_rename || 'Rename'} />
         )}

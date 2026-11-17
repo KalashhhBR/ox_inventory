@@ -43,6 +43,9 @@ Fork do [ox_inventory](https://github.com/overextended/ox_inventory) da Overexte
 | **Loja de roupa** | O visual é escolhido no illenium-appearance; cada peça trocada é cobrada e vira item. |
 | **Renomear** | Qualquer item pode ganhar um nome; o original continua visível no tooltip. |
 | **Bolsa de estilo** | Guarda um visual inteiro e troca tudo de uma vez. |
+| **Arremesso** | Qualquer item pode ser jogado, pelo menu ou por tecla para a arma na mão. Lixeira e porta-malas aberto têm chance de receber o item. |
+| **Morte, limpeza e confisco** | A roupa fica; mochila vestida e colete acompanham o inventário. O confisco aceita uma lista de itens que o jogador perde de vez. |
+| **Drops agrupados** | Item largado junto de um drop com espaço entra nele, em vez de espalhar drops pequenos. |
 
 A lista completa, versão por versão, está no [CHANGELOG.md](./CHANGELOG.md). Toda mudança no código do original está marcada com `-- klsh:`.
 
@@ -91,6 +94,8 @@ Toda a configuração de uma coisa fica junto dessa coisa. O passo a passo está
 | Tempo e preço de cada categoria de roupa | `categories` em `data/equipment.lua` |
 | Tempo de transferência por peso | `transfer` em `data/equipment.lua` |
 | Revista, renomear, loja de roupa, guarda-roupas, bolsa de estilo | `data/equipment.lua` |
+| Arremesso (tecla, peso, alcance, alvos, de dentro do veículo) | `data/throw.lua` |
+| Agrupar drops próximos | `drop.merge` em `data/grid.lua` |
 
 ## Para quem desenvolve outros scripts
 
@@ -101,7 +106,9 @@ Os `exports` do original continuam existindo. O [INTEGRATION.md](./INTEGRATION.m
 - Itens dentro de mochilas e bolsas **não contam** para `GetItemCount`, `Search` e `RemoveItem` do jogador.
 - Mover item pela interface pode levar até 3 segundos; `AddItem` e `RemoveItem` por export continuam instantâneos.
 - Revista: `exports.ox_inventory:SearchPlayer(source, target, { notify = true, distance = 2.0 })`. O inventário confere só distância e instância; quem decide se pode revistar é o seu script.
-- Prisão: use `ConfiscateInventory` e `ReturnInventory`.
+- Prisão: use `ConfiscateInventory(source, { discard = { 'armour' } })` e `ReturnInventory(source)`. Quem copia a lista de itens e chama `ClearInventory` faz o preso perder mochila e colete.
+- `ClearInventory` em jogador leva também a mochila vestida e o colete; a roupa fica.
+- Arremesso: `exports.ox_inventory:SetThrowBonus(source, valor)` soma chance de acertar lixeira ou porta-malas.
 
 ## Comandos
 
@@ -109,6 +116,8 @@ Os `exports` do original continuam existindo. O [INTEGRATION.md](./INTEGRATION.m
 |---|---|---|
 | `/searchplayer <id>` | admin | abre a revista de um jogador (para teste) |
 | `/klsh_inventory_remigrate <id>` | admin | refaz a conversão das roupas vestidas em itens |
+| `/takeinv <id> [itens]` | admin | confisca o inventário; os itens listados são destruídos em vez de guardados |
+| tecla `G` (configurável) | jogador | arremessa a arma que está na mão |
 
 Os comandos do original (`/giveitem`, `/clearinv`, `/takeinv`, `/returninv` e os demais) continuam valendo.
 
@@ -122,7 +131,9 @@ Os comandos do original (`/giveitem`, `/clearinv`, `/takeinv`, `/returninv` e os
 
 - Testado só em Qbox. Os bridges dos outros frameworks continuam no código, mas não foram testados com o fork.
 - Outfits salvos e uniformes de emprego do illenium-appearance são desfeitos fora de loja: roupa só nasce de loja, criação de personagem e menu de admin.
-- `/clearinv` e `/takeinv` ainda não levam mochila e colete vestidos.
+- No arremesso, só quem joga vê o objeto no ar; os outros veem a animação e o item aparecer onde caiu.
+- O ponto de queda do arremesso, o porta-malas aberto e o vidro aberto são informados pelo client; o servidor limita por distância, altura, trava e intervalo.
+- Lixeiras do mapa que não existem em rede não recebem arremesso (nem abrem para revista) com `inventory:networkdumpsters` desligado.
 - Em telas 5:4 a interface passa da largura.
 - Atualizar a partir do original exige reaplicar à mão as partes que o fork reescreve (`swapItems`, `AddItem` e a interface).
 

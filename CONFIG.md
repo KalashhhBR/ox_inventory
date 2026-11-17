@@ -266,3 +266,63 @@ outfitBag = { item = 'outfit_bag', duration = 8000 },   -- false desliga
   as peças têm de ser do mesmo modelo de corpo.
 - **Venda:** é um item comum. Para vender, acrescente em uma loja de `data/shops.lua`:
   `{ name = 'outfit_bag', price = 500 }` (hoje na loja `General`, as 24/7).
+
+## Drops no chão
+
+```lua
+-- data/grid.lua
+drop = { w = 8, h = 5, merge = 1.5 },
+```
+
+- `w`, `h`: tamanho da grade de cada drop.
+- `merge`: item largado ou arremessado a até esses metros de um drop que já existe **e que tem espaço
+  para ele** entra nesse drop, em vez de criar outro ao lado. Sem espaço, cria um drop novo. `false`
+  desliga (sempre um drop novo).
+
+## Morte, limpeza e prisão
+
+Não há config no inventário: a regra é fixa (a roupa fica; mochila vestida e colete vão junto). O que cada
+script faz é escolha dele:
+
+- **Morte / respawn:** quem chama `ClearInventory` decide (no `qbx_ambulancejob`, `wipeInvOnRespawn`).
+- **Prisão:** quem chama `ConfiscateInventory` pode passar `{ discard = { 'armour' } }` para o preso perder
+  certos itens de vez. Ver `INTEGRATION.md`.
+- **Admin:** `/takeinv <id> [itens a descartar]`, `/returninv <id>`, `/clearinv <id>`.
+
+## Arremesso
+
+```lua
+-- data/throw.lua
+enabled = true,
+key = 'G',              -- tecla padrão para arremessar o que está na mão (false = sem tecla padrão)
+maxWeight = 5000,       -- gramas; acima disso não dá para arremessar
+cooldown = 1500,        -- ms entre arremessos
+chargeTime = 1200,      -- ms segurando o botão para a força máxima
+minCharge = 0.25,       -- parte do alcance de um toque rápido
+range = { light = 18.0, heavy = 6.0 },  -- metros na força máxima: item leve e item no peso máximo
+prop = `prop_paper_bag_small`,          -- objeto para itens sem modelo próprio
+```
+
+- **Menu de contexto → Arremessar:** fecha o inventário e põe o item na mão. Segurar o botão esquerdo
+  carrega a força, soltar joga; botão direito ou Backspace cancela. O campo de quantidade vale como no "Soltar".
+- **Tecla (padrão G):** arremessa a arma que está na mão. Cada jogador pode trocar a tecla nas
+  configurações do FiveM (a tecla padrão só vale para quem ainda não tem a tecla registrada).
+- O item vira um drop onde cair. Qualquer item dentro do peso pode ser arremessado.
+
+Alvos e veículo (`data/throw.lua`):
+
+```lua
+targets = {
+    targetRadius = 2.5,   -- metros da lixeira, ou da boca do porta-malas, em que o item tem de cair
+    trunkRadius = 7.0,    -- metros do centro do veículo que o servidor aceita
+    chance = { base = 0.85, perMeter = 0.04, perKg = 0.06, min = 0.05 },
+},                        -- targets = false desliga os alvos
+fromVehicle = true,       -- de dentro do veículo, com vidro ou porta abertos ao lado do banco
+```
+
+- **Chance de cair dentro** = `base` − `perMeter` × metros arremessados − `perKg` × quilos, nunca abaixo
+  de `min`. Exemplo: garrafa de 500 g a 5 m = 62%; rifle de 4 kg a 5 m = 41%.
+- **Porta-malas:** precisa estar aberto e destrancado. **Lixeira:** as mesmas que podem ser revistadas.
+- Errou ou não coube: o item vira um drop ao lado.
+- **De dentro do veículo:** qualquer banco, desde que haja uma abertura ao lado: vidro abaixado ou
+  quebrado, porta aberta, porta arrancada ou veículo sem porta (moto, buggy). O item sai por esse lado.

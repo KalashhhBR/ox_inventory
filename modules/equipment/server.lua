@@ -500,6 +500,211 @@ function Equipment.onDropCreated(source, dropId, owner)
     return false
 end
 
+-- Death, clearing and confiscation: clothing stays on the body; the worn backpack and the vest follow
+-- the rest of the inventory.
+
+---Takes the vest and the worn backpack off at once (no time, no checks). The backpack keeps its content.
+---@param playerInv OxInventory
+---@param filter? fun(item: SlotWithItem): boolean return false to leave the piece on the body
+---@return SlotWithItem[] taken
+function Equipment.takeWorn(playerInv, filter)
+    local taken = {}
+    local inv = Equipment.get(playerInv)
+
+    if not inv then return taken end
+
+    readVestArmour(playerInv, true) -- the vest leaves with the armour it has right now
+
+    local slots = {}
+
+    for _, slot in ipairs({ vestSlot, bagSlot }) do
+        local item = slot and inv.items[slot]
+
+        if item and (not filter or filter(item) ~= false) then
+            inv.items[slot] = nil
+            taken[#taken + 1] = item
+            slots[#slots + 1] = { item = { slot = slot }, inventory = inv.id }
+        end
+    end
+
+    if #taken == 0 then return taken end
+
+    inv.weight = Inventory.CalculateWeight(inv.items)
+    inv.changed = true
+    inv:syncSlotsWithClients(slots, false)
+
+    Equipment.refreshBag(playerInv, true)
+    Equipment.refreshVest(playerInv)
+    Equipment.pushAppearance(playerInv, true)
+    refreshSearchers(playerInv)
+
+    return taken
+end
+
+---Empties the content of a container item that is being destroyed.
+---@param item SlotWithItem
+local function wipeContainer(item)
+    local id = item.metadata and item.metadata.container
+
+    if not id then return end
+
+    local container = Inventory.GetLoaded(id)
+
+    if container then
+        table.wipe(container.items)
+        container.weight = 0
+        container.changed = true
+        Inventory.Remove(container) -- saves it empty and unloads it
+    else
+        MySQL.update('DELETE FROM ox_inventory WHERE name = ?', { id })
+    end
+end
+
+---@param list? string | string[] | table<string, boolean>
+---@return table<string, boolean>? set
+local function toNameSet(list)
+    if type(list) == 'string' then return { [list] = true } end
+    if type(list) ~= 'table' then return end
+
+    local set = {}
+
+    for key, value in pairs(list) do
+        if type(key) == 'number' and type(value) == 'string' then
+            set[value] = true
+        elseif type(key) == 'string' and value then
+            set[key] = true
+        end
+    end
+
+    return next(set) and set or nil
+end
+
+---ClearInventory on a player: the worn backpack (and what is inside) and the vest are destroyed too,
+---unless their item name is in `keep`.
+---@param playerInv OxInventory
+---@param keep? string | string[]
+function Equipment.onClear(playerInv, keep)
+    local kept = toNameSet(keep)
+    local taken = Equipment.takeWorn(playerInv, function(item)
+        return not (kept and kept[item.name])
+    end)
+
+    for i = 1, #taken do wipeContainer(taken[i]) end
+end
+
+---@param playerInv OxInventory
+---@return boolean waiting true when something confiscated from this character was not returned yet
+function Equipment.hasConfiscated(playerInv)
+    local owner = tostring(playerInv.owner)
+
+    return MySQL.scalar.await('SELECT 1 FROM ox_inventory WHERE (owner = ? AND name = ?) OR (owner = ? AND name = ?) LIMIT 1',
+        { owner, owner, owner, 'equip-confiscated' }) ~= nil
+end
+
+---Removes the discarded items from a container item that is about to be confiscated.
+---@param container OxInventory?
+---@param item SlotWithItem the container item
+---@param discard table<string, boolean>
+local function discardFromContainer(container, item, discard)
+    if not container then return end
+
+    local changed = false
+
+    for slot, content in pairs(container.items) do
+        if discard[content.name] then
+            container.items[slot] = nil
+            changed = true
+        end
+    end
+
+    if not changed then return end
+
+    local weight = Inventory.CalculateWeight(container.items)
+
+    container.weight = weight
+    container.changed = true
+    item.metadata.weight = weight
+    item.weight = Items(item.name).weight + weight
+end
+
+---ConfiscateInventory: applies `options.discard` (main inventory, containers in it, vest, worn backpack
+---and its content) and takes the vest and the worn backpack off.
+---@param playerInv OxInventory
+---@param options? { discard?: string[] | table<string, boolean> }
+---@return table[]? worn what goes into the 'equip-confiscated' record
+function Equipment.onConfiscate(playerInv, options)
+    local discard = toNameSet(type(options) == 'table' and options.discard or nil)
+
+    if discard then
+        for slot, item in pairs(playerInv.items) do
+            if discard[item.name] then
+                wipeContainer(item)
+                playerInv.items[slot] = nil
+            elseif item.metadata and item.metadata.container then
+                discardFromContainer(Inventory.GetContainerFromSlot(playerInv, slot), item, discard)
+            end
+        end
+
+        local bag, bagItem = Equipment.getBag(playerInv)
+
+        if bag and bagItem and not discard[bagItem.name] then
+            discardFromContainer(bag, bagItem, discard)
+        end
+    end
+
+    local taken = Equipment.takeWorn(playerInv)
+    local worn, n = {}, 0
+
+    for i = 1, #taken do
+        local item = taken[i]
+
+        if discard and discard[item.name] then
+            wipeContainer(item)
+        else
+            n += 1
+            worn[n] = { name = item.name, count = 1, slot = item.slot, metadata = item.metadata }
+        end
+    end
+
+    return n > 0 and worn or nil
+end
+
+---ReturnInventory: the confiscated vest and backpack go back to their slots; when the slot is taken
+---they go to the inventory (or to the ground next to the player).
+---@param playerInv OxInventory
+function Equipment.onReturn(playerInv)
+    local owner = tostring(playerInv.owner)
+    local stored = MySQL.scalar.await('SELECT data FROM ox_inventory WHERE owner = ? AND name = ?', { owner, 'equip-confiscated' })
+
+    if not stored then return end
+
+    MySQL.update.await('DELETE FROM ox_inventory WHERE owner = ? AND name = ?', { owner, 'equip-confiscated' })
+
+    local worn = json.decode(stored)
+    local inv = Equipment.get(playerInv)
+
+    if type(worn) ~= 'table' or not inv then return end
+
+    for i = 1, #worn do
+        local piece = worn[i]
+        local item = type(piece) == 'table' and Items(piece.name)
+
+        if item then
+            local slot = data.getSlot(piece.name)
+            local placed = slot and not inv.items[slot] and Inventory.AddItem(inv, item, 1, piece.metadata, slot)
+
+            if not placed then
+                Inventory.AddItem(playerInv, item, 1, piece.metadata, nil, nil, true)
+            end
+        end
+    end
+
+    Equipment.refreshBag(playerInv, true)
+    Equipment.refreshVest(playerInv)
+    Equipment.pushAppearance(playerInv, true)
+    refreshSearchers(playerInv)
+end
+
 ---@param playerInv OxInventory
 ---@param invType string
 ---@return OxInventory?
