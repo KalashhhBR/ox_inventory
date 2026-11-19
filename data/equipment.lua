@@ -92,11 +92,11 @@ return {
     --   whitelist / blacklist (optional): arrays of item names
     backpacks = {
         backpack_small = {
-            slots = 8, grid = { 4, 4 }, maxWeight = 8000, reduction = 0.0,
+            slots = 8, grid = { 8, 2 }, maxWeight = 8000, reduction = 0.0,
             drawable = { mp_m_freemode_01 = { 44, 0 }, mp_f_freemode_01 = { 44, 0 } },
         },
         backpack_medium = {
-            slots = 15, grid = { 6, 5 }, maxWeight = 20000, reduction = 0.3,
+            slots = 15, grid = { 8, 4 }, maxWeight = 20000, reduction = 0.3,
             drawable = { mp_m_freemode_01 = { 45, 0 }, mp_f_freemode_01 = { 45, 0 } },
         },
         backpack_large = {

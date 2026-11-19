@@ -31,13 +31,15 @@ Fork do [ox_inventory](https://github.com/overextended/ox_inventory) da Overexte
 
 | Área | O que o fork faz |
 |---|---|
+| **Interface** | Tela em três zonas (o que você carrega, o personagem, o inventário aberto e o chão), com busca por inventário, peso em cada item, campo de quantidade, menu de contexto e avisos por cima da tela. |
+| **Atalhos de arrastar** | Arrastar para fora larga no chão; arrastar para o personagem veste ou usa. |
 | **Grade** | Cada item ocupa largura × altura e pode ser girado (tecla **R**). Limite de pilha por item. Vale para jogador, mochila, baús, porta-malas, porta-luvas, chão e revista. |
-| **Carteira** | Dinheiro e dinheiro sujo ficam em dois slots próprios, fora da grade: sempre cabem. |
+| **Carteira** | Dinheiro e dinheiro sujo ficam em dois slots próprios, fora da grade: sempre cabem. Podem ser arrastados, dados e arremessados. |
 | **Roupas como itens** | 14 slots de equipamento. Vestir e tirar leva tempo, tem animação e é bloqueado em veículo e em combate. Roupa só serve no mesmo modelo de corpo. |
 | **Mochilas** | Vestida, a mochila vira uma seção do inventário com capacidade própria e redução de peso configurável. |
 | **Colete** | O item guarda a armadura restante: vestir aplica, tiro desgasta, tirar salva. |
 | **Transferência** | Mover itens entre inventários leva tempo conforme o peso, com fila de ações. |
-| **Chão** | O drop mais próximo aparece junto com o inventário secundário. |
+| **Chão** | O drop mais próximo aparece junto com o inventário secundário; com mais de um ao alcance, setas trocam o drop mostrado. |
 | **Atalhos** | Cinco atalhos (teclas 1 a 5) que apontam para itens da grade. |
 | **Revista** | Endpoint `SearchPlayer` para scripts de polícia, assalto e furto; quem revista vê e leva tudo. |
 | **Loja de roupa** | O visual é escolhido no illenium-appearance; cada peça trocada é cobrada e vira item. |
@@ -96,6 +98,7 @@ Toda a configuração de uma coisa fica junto dessa coisa. O passo a passo está
 | Revista, renomear, loja de roupa, guarda-roupas, bolsa de estilo | `data/equipment.lua` |
 | Arremesso (tecla, peso, alcance, alvos, de dentro do veículo) | `data/throw.lua` |
 | Agrupar drops próximos | `drop.merge` em `data/grid.lua` |
+| Textos, abas, cores e larguras da tela | seção "Interface" do [CONFIG.md](./CONFIG.md) |
 
 ## Para quem desenvolve outros scripts
 
@@ -134,7 +137,10 @@ Os comandos do original (`/giveitem`, `/clearinv`, `/takeinv`, `/returninv` e os
 - No arremesso, só quem joga vê o objeto no ar; os outros veem a animação e o item aparecer onde caiu.
 - O ponto de queda do arremesso, o porta-malas aberto e o vidro aberto são informados pelo client; o servidor limita por distância, altura, trava e intervalo.
 - Lixeiras do mapa que não existem em rede não recebem arremesso (nem abrem para revista) com `inventory:networkdumpsters` desligado.
-- Em telas 5:4 a interface passa da largura.
+- As abas Saúde, Crafting e Habilidades são reservadas: aparecem apagadas e ainda não fazem nada.
+- O menu de contexto dos itens só abre nos bolsos e na carteira.
+- A interface carrega as fontes do Google Fonts; sem acesso à internet no cliente, usa a fonte padrão do sistema.
+- Teclas de outros resources (agachar, por exemplo) continuam valendo com o inventário aberto, a não ser que o resource confira `LocalPlayer.state.invOpen`.
 - Atualizar a partir do original exige reaplicar à mão as partes que o fork reescreve (`swapItems`, `AddItem` e a interface).
 
 ## Contribuindo e relatando bugs

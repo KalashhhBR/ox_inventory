@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useDragLayer, useDragDropManager } from 'react-dnd';
 import { DragSource } from '../../typings';
+import { useDragHint } from '../../store/dragHint'; // klsh
 
 const DragPreview: React.FC = () => {
   const manager = useDragDropManager();
@@ -34,9 +35,16 @@ const DragPreview: React.FC = () => {
     return monitor.subscribeToOffsetChange(apply);
   }, [isDragging, manager]);
 
+  // klsh: what dropping here would do (wear, use, ground, hotkey)
+  const hint = useDragHint();
+
   if (!isDragging || !data?.item) return null;
 
-  return <div className="item-drag-preview" ref={rootRef} style={{ backgroundImage: data.image }} />;
+  return (
+    <div className="item-drag-preview" ref={rootRef} style={{ backgroundImage: data.image }}>
+      {hint && <span className="k-drag-tag">{hint}</span>}
+    </div>
+  );
 };
 
 export default DragPreview;

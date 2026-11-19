@@ -954,4 +954,79 @@ function Grid.postSwap(playerInventory, fromInventory, toInventory, data)
     Grid.trim(fromInventory)
 end
 
+-- klsh: with `debug = true` in data/grid.lua every refused move is written to the server console with
+-- what was asked and what is in the way, to find out why a place that looks free is refused
+if config.debug then
+    local checked = Grid.preSwap
+
+    local function describe(inv)
+        local grid = inv.grid
+
+        return ('%s "%s" %s'):format(inv.type, tostring(inv.id), grid and ('%dx%d'):format(grid.w, grid.h) or 'no grid')
+    end
+
+    function Grid.preSwap(playerInventory, fromInventory, toInventory, data)
+        local asked = { toSlot = data.toSlot, toX = data.toX, toY = data.toY, rotated = data.rotated, count = data.count }
+        local allowed, reason = checked(playerInventory, fromInventory, toInventory, data)
+
+        if allowed then return allowed, reason end
+
+        local fromData = fromInventory.items[data.fromSlot]
+        local lines = { ('[klsh grid] refused (%s) player %s'):format(tostring(reason), tostring(playerInventory.id)) }
+
+        lines[#lines + 1] = ('  from %s slot %s'):format(describe(fromInventory), tostring(data.fromSlot))
+        lines[#lines + 1] = ('  to   %s  asked: toSlot=%s toX=%s (%s) toY=%s (%s) rotated=%s count=%s'):format(
+            describe(toInventory), tostring(asked.toSlot), tostring(asked.toX), math.type(asked.toX) or type(asked.toX),
+            tostring(asked.toY), math.type(asked.toY) or type(asked.toY), tostring(asked.rotated), tostring(asked.count))
+
+        if fromData then
+            local w, h = getSize(fromData.name)
+
+            lines[#lines + 1] = ('  item %s x%s size %dx%d at x=%s y=%s rotated=%s'):format(
+                fromData.name, tostring(fromData.count), w, h, tostring(fromData.x), tostring(fromData.y), tostring(fromData.rotated))
+
+            if toInventory.grid and math.type(asked.toX) == 'integer' and math.type(asked.toY) == 'integer' then
+                local fw, fh = Geo.footprint(w, h, asked.rotated == true)
+                local grid = toInventory.grid
+
+                if asked.toX < 1 or asked.toY < 1 or asked.toX + fw - 1 > grid.w or asked.toY + fh - 1 > grid.h then
+                    lines[#lines + 1] = ('  the %dx%d footprint leaves the %dx%d area'):format(fw, fh, grid.w, grid.h)
+                end
+
+                for slot, other in pairs(toInventory.items) do
+                    if other ~= fromData and other.x and other.y then
+                        local ow, oh = Geo.footprint(getSize(other.name))
+
+                        if other.rotated then ow, oh = oh, ow end
+
+                        if asked.toX < other.x + ow and other.x < asked.toX + fw and asked.toY < other.y + oh and other.y < asked.toY + fh then
+                            lines[#lines + 1] = ('  blocked by slot %s: %s size %dx%d at x=%s y=%s rotated=%s'):format(
+                                tostring(slot), other.name, ow, oh, tostring(other.x), tostring(other.y), tostring(other.rotated))
+                        end
+                    end
+                end
+            end
+        else
+            lines[#lines + 1] = '  the source slot is empty on the server'
+        end
+
+        -- no place asked (quick move): everything the destination holds, to see why nothing was found
+        if toInventory.grid and asked.toX == nil and asked.toSlot == nil then
+            local held = {}
+
+            for slot, other in pairs(toInventory.items) do
+                local ow, oh = getSize(other.name)
+
+                held[#held + 1] = ('%s:%s %dx%d@%s,%s%s'):format(tostring(slot), other.name, ow, oh, tostring(other.x), tostring(other.y), other.rotated and 'r' or '')
+            end
+
+            lines[#lines + 1] = ('  destination holds %d items, weight %s/%s: %s'):format(#held, tostring(toInventory.weight), tostring(toInventory.maxWeight), table.concat(held, ' '))
+        end
+
+        print(table.concat(lines, '\n'))
+
+        return allowed, reason
+    end
+end
+
 return Grid

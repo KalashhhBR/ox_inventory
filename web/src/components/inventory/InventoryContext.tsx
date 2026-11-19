@@ -1,6 +1,9 @@
 import { onUse } from '../../dnd/onUse';
 import { onGive } from '../../dnd/onGive';
 import { onDrop } from '../../dnd/onDrop';
+import { onGround } from '../../dnd/onGround'; // klsh
+import { openSplit } from '../../store/split'; // klsh
+import { formatCount, itemLabel, longWeight } from '../../helpers/format'; // klsh
 import { Items } from '../../store/items';
 import { fetchNui } from '../../utils/fetchNui';
 import { Locale } from '../../store/locale';
@@ -38,6 +41,10 @@ interface GroupedButtons extends Array<Group> {}
 const InventoryContext: React.FC = () => {
   const contextMenu = useAppSelector((state) => state.contextMenu);
   const item = contextMenu.item;
+  const amount = useAppSelector((state) => state.inventory.itemAmount); // klsh
+  // klsh: the wallet lines open this menu too; money is not used and does not split inside the wallet
+  const money = item?.name === 'money' || item?.name === 'black_money';
+  const grid = useAppSelector((state) => !!state.inventory.leftInventory.grid); // klsh
 
   const handleClick = (data: DataProps) => {
     if (!item) return;
@@ -62,7 +69,15 @@ const InventoryContext: React.FC = () => {
         fetchNui('throwItem', { slot: item.slot, count: store.getState().inventory.itemAmount });
         break;
       case 'drop':
+        // klsh: always the ground, even with another inventory open on the right
+        isSlotWithItem(item) && onGround({ item: item, inventory: 'player' });
+        break;
+      case 'quick':
+        // klsh: to the inventory on the right
         isSlotWithItem(item) && onDrop({ item: item, inventory: 'player' });
+        break;
+      case 'split':
+        isSlotWithItem(item) && openSplit(item);
         break;
       case 'remove':
         fetchNui('removeComponent', { component: data?.component, slot: data?.slot });
@@ -104,13 +119,32 @@ const InventoryContext: React.FC = () => {
   return (
     <>
       <Menu>
-        <MenuItem onClick={() => handleClick({ action: 'use' })} label={Locale.ui_use || 'Use'} />
+        {/* klsh: what was clicked, how many and how heavy; the typed quantity when there is one */}
+        {item && (
+          <div className="context-menu-head">
+            <b>{itemLabel(item)}</b>
+            <span>
+              {[
+                money ? `${Locale.$ || '$'} ${formatCount(item.count)}` : item.count > 1 && formatCount(item.count),
+                item.weight > 0 && longWeight(item.weight),
+                amount > 0 && amount < item.count && `${Locale.ui_quantity || 'Quantity'}: ${formatCount(amount)}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </div>
+        )}
+        {!money && <MenuItem onClick={() => handleClick({ action: 'use' })} label={Locale.ui_use || 'Use'} hint="Alt" />}
         {item && item.metadata?.container !== undefined && (
           <MenuItem onClick={() => handleClick({ action: 'open' })} label={Locale.ui_open || 'Open'} />
         )}
         <MenuItem onClick={() => handleClick({ action: 'give' })} label={Locale.ui_give || 'Give'} />
-        <MenuItem onClick={() => handleClick({ action: 'drop' })} label={Locale.ui_drop || 'Drop'} />
         <MenuItem onClick={() => handleClick({ action: 'throw' })} label={Locale.ui_throw || 'Throw'} />
+        <MenuItem onClick={() => handleClick({ action: 'drop' })} label={Locale.ui_drop || 'Drop'} />
+        <MenuItem onClick={() => handleClick({ action: 'quick' })} label={Locale.ui_quick_move || 'Quick move'} hint="Ctrl" />
+        {item && item.count > 1 && grid && !money && (
+          <MenuItem onClick={() => handleClick({ action: 'split' })} label={Locale.ui_split || 'Split'} />
+        )}
         {item?.name !== 'money' && item?.name !== 'black_money' && (
           <MenuItem onClick={() => handleClick({ action: 'rename' })} label={Locale.ui_rename || 'Rename'} />
         )}

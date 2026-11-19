@@ -5,7 +5,6 @@ import { DragSource, Inventory, InventoryType } from '../../typings';
 import { useAppDispatch, useAppSelector, store } from '../../store';
 import { selectHotbar } from '../../store/inventory';
 import { hotbarIndexOf } from '../../helpers/hotbar';
-import { Items } from '../../store/items';
 import { getItemUrl, getTargetInventory } from '../../helpers';
 import { footprint, GridItem as GridItemData, itemSize } from '../../helpers/grid';
 import { setDragRotated } from '../../store/gridDrag';
@@ -18,8 +17,10 @@ import useNuiEvent from '../../hooks/useNuiEvent';
 import { fetchNui } from '../../utils/fetchNui';
 import { clearMoveQueue, useQueuePosition } from '../../dnd/moveQueue';
 import WeightBar from '../utils/WeightBar';
+import { formatCount, itemLabel, shortWeight } from '../../helpers/format';
 
-const GridItem: React.FC<{ item: GridItemData; inventory: Inventory }> = ({ item, inventory }) => {
+// match: undefined without a search; true/false when the inventory is being searched
+const GridItem: React.FC<{ item: GridItemData; inventory: Inventory; match?: boolean }> = ({ item, inventory, match }) => {
   const dispatch = useAppDispatch();
   const timerRef = useRef<number | null>(null);
   const size = itemSize(item.name);
@@ -89,6 +90,12 @@ const GridItem: React.FC<{ item: GridItemData; inventory: Inventory }> = ({ item
     dispatch(openContextMenu({ item, coords: { x: event.clientX, y: event.clientY } }));
   };
 
+  // klsh: count and weight share the top line; in a one-cell-wide item that is too long for it the
+  // weight goes right under the count
+  const countText = item.count > 1 ? formatCount(item.count) : '';
+  const weightText = shortWeight(item.weight);
+  const stacked = w === 1 && countText !== '' && countText.length + weightText.length > 6;
+
   const hotbar = useAppSelector(selectHotbar);
   const hotkey = inventory.type === InventoryType.PLAYER ? hotbarIndexOf(hotbar, item) : 0;
 
@@ -97,7 +104,7 @@ const GridItem: React.FC<{ item: GridItemData; inventory: Inventory }> = ({ item
       ref={(element) => {
         drag(element);
       }}
-      className="grid-item"
+      className={`grid-item${match === undefined ? '' : match ? ' grid-item-hit' : ' grid-item-dim'}`}
       onClick={handleClick}
       onContextMenu={handleContext}
       onMouseEnter={() => {
@@ -127,16 +134,20 @@ const GridItem: React.FC<{ item: GridItemData; inventory: Inventory }> = ({ item
           transform: item.rotated ? 'translate(-50%, -50%) rotate(90deg)' : 'translate(-50%, -50%)',
         }}
       />
-      {hotkey > 0 && <div className="grid-item-hotkey">{hotkey}</div>}
-      {item.count > 1 && <div className="grid-item-count">{item.count.toLocaleString('en-us')}</div>}
+      {/* klsh: count on the left, weight of the whole stack on the right */}
+      <div className={`grid-item-top${stacked ? ' grid-item-top-stacked' : ''}`}>
+        <span className="grid-item-count">{countText}</span>
+        <span className="grid-item-weight">{weightText}</span>
+      </div>
       {item.durability !== undefined && (
         <div className="grid-item-durability">
           <WeightBar percent={item.durability} durability />
         </div>
       )}
-      {w * h > 1 && (
-        <div className="grid-item-label">{item.metadata?.label || Items[item.name]?.label || item.name}</div>
-      )}
+      <div className="grid-item-bottom">
+        <span className="grid-item-label">{w * h > 1 ? itemLabel(item) : ''}</span>
+        {hotkey > 0 && <span className="grid-item-hotkey">{hotkey}</span>}
+      </div>
       {queued > 1 && progress === undefined && (
         <div
           className="slot-queued"

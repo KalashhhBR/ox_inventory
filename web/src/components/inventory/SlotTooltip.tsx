@@ -7,12 +7,14 @@ import ClockIcon from '../utils/icons/ClockIcon';
 import { getItemUrl } from '../../helpers';
 import Divider from '../utils/Divider';
 import Markdown from '../utils/Markdown';
+import { longWeight } from '../../helpers/format'; // klsh
 
 const SlotTooltip: React.ForwardRefRenderFunction<
   HTMLDivElement,
   { item: SlotWithItem; inventoryType: Inventory['type']; style: React.CSSProperties }
 > = ({ item, inventoryType, style }, ref) => {
   const additionalMetadata = useAppSelector((state) => state.inventory.additionalMetadata);
+  const reduction = useAppSelector((state) => state.inventory.backpackInventory?.reduction || 0); // klsh
   const itemData = useMemo(() => Items[item.name], [item]);
   const ingredients = useMemo(() => {
     if (!item.ingredients) return null;
@@ -72,6 +74,22 @@ const SlotTooltip: React.ForwardRefRenderFunction<
                     {Locale.ui_variant || 'Variant'}: {item.metadata.texture ?? 0}
                   </p>
                 </>
+              )}
+              {/* klsh: weight of one unit, of the stack and, inside the worn backpack, what it really adds */}
+              {item.weight > 0 && item.count > 1 && (
+                <p>
+                  {Locale.ui_weight_unit || 'Weight each'}: {longWeight(item.weight / item.count)}
+                </p>
+              )}
+              {item.weight > 0 && (
+                <p>
+                  {Locale.ui_weight_total || 'Weight'}: {longWeight(item.weight)}
+                </p>
+              )}
+              {item.weight > 0 && inventoryType === 'backpack' && reduction > 0 && (
+                <p>
+                  {Locale.ui_weight_carried || 'Carried'}: {longWeight(item.weight * (1 - reduction))}
+                </p>
               )}
               {item.durability !== undefined && (
                 <p>

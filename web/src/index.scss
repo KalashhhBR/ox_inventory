@@ -563,115 +563,951 @@ body.inv-dragging {
   transition: all 200ms;
 }
 
-// klsh: equipment panel
-$equipmentSlot: 6.6vh;
+// klsh: interface v2 (0.23.0). One dark frame over the game, three zones on a fixed grid: what the
+// player carries (left), the character (centre), the world (right). Every size comes from --u, a
+// hundredth of the width of the 16:9 area, so the screen keeps its proportions on any monitor.
+@function u($n) {
+  @return calc(var(--u) * #{$n});
+}
 
-.equipment-panel {
+$kHead: 'Rajdhani', 'Inter', 'Segoe UI', sans-serif;
+$kBody: 'Inter', 'Segoe UI', system-ui, sans-serif;
+$kMono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+:root {
+  --u: #{'min(1vw, 1.7778vh)'};
+  --grid-cell: #{u(3.25)};
+  --k-line: rgba(148, 163, 184, 0.14);
+  --k-line-strong: rgba(148, 163, 184, 0.28);
+  --k-blue: #2563eb;
+  --k-blue-soft: #60a5fa;
+  --k-text: #e2e8f0;
+  --k-muted: #94a3b8;
+  --k-dim: #64748b;
+  --k-ok: #34d399;
+  --k-warn: #fbbf24;
+  --k-bad: #f87171;
+  --k-surface: rgba(8, 11, 18, 0.55);
+  --k-item: rgba(26, 36, 54, 0.95);
+  --k-menu: rgba(10, 13, 20, 0.97);
+}
+
+.k-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: $kBody;
+  font-size: u(0.78);
+  color: var(--k-text);
+  background: linear-gradient(
+    90deg,
+    rgba(5, 6, 8, 0.93) 0%,
+    rgba(5, 6, 8, 0.78) 30%,
+    rgba(5, 6, 8, 0.62) 50%,
+    rgba(5, 6, 8, 0.78) 66%,
+    rgba(5, 6, 8, 0.93) 100%
+  );
+
+  p {
+    font-family: inherit;
+  }
+
+  kbd {
+    font-family: $kMono;
+    font-size: u(0.64);
+    border: 1px solid var(--k-line-strong);
+    border-radius: u(0.25);
+    padding: u(0.1) u(0.45);
+    margin-right: u(0.4);
+    color: var(--k-text);
+    background: rgba(2, 6, 23, 0.5);
+  }
+}
+
+.k-ui {
+  box-sizing: border-box;
+  width: u(100);
+  height: u(56.25);
+  padding: u(1.9) u(2.6) u(1.5);
+  display: grid;
+  // both sides reserve the width of the widest inventory (10 cells), so the character sits on the
+  // centre of the screen; the pockets, 8 cells wide, stay against the left edge
+  grid-template-columns: calc(var(--grid-cell) * 10) minmax(0, 1fr) calc(var(--grid-cell) * 10);
+  grid-template-rows: u(2.6) minmax(0, 1fr) u(1.6);
+  column-gap: u(2.2);
+  row-gap: u(1.2);
+}
+
+.k-who {
+  align-self: center;
+  font-family: $kHead !important;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-size: u(1.15);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.k-esc {
+  align-self: center;
+  justify-self: end;
+  font-size: u(0.7);
+  color: var(--k-muted);
+  white-space: nowrap;
+}
+
+.k-tabs {
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: u(1.1);
+  white-space: nowrap;
+}
+
+.k-tab {
+  font-family: $kHead;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  font-size: u(0.86);
+  color: var(--k-muted);
+  padding: u(0.3) 0;
+  border-bottom: 2px solid transparent;
+}
+
+.k-tab-on {
+  color: #fff;
+  border-bottom-color: var(--k-blue);
+}
+
+.k-tab-soon {
+  opacity: 0.3;
+}
+
+.k-col {
   display: flex;
   flex-direction: column;
-  gap: calc($gridGap * 2);
-  color: $textColor;
+  gap: u(1.2);
+  min-height: 0;
+  overflow: hidden;
+
+  > .k-sec {
+    flex: none;
+  }
+
+  // when a column does not fit the screen only its last inventory shrinks, and it scrolls inside
+  > .k-sec:last-child {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+
+    > .grid-scroll,
+    > .inventory-grid-container {
+      flex: 0 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
+  }
 }
 
-.equipment-body {
+// on the right, an inventory narrower than the column stays against the edge of the screen
+.k-col-right {
+  align-items: flex-end;
+}
+
+// ground: previous and next drop within reach
+.k-nav {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 0.8vh;
-  height: calc($containerSize + 0.6vh);
+  gap: u(0.3);
+  font-family: $kMono;
+  font-size: u(0.7);
+  color: var(--k-text);
+
+  button {
+    all: unset;
+    box-sizing: border-box;
+    width: u(1.3);
+    height: u(1.3);
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--k-line-strong);
+    font-size: u(0.9);
+    line-height: 1;
+    color: var(--k-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: #fff;
+      border-color: var(--k-blue-soft);
+    }
+  }
 }
 
-.equipment-column {
+.k-centre {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 0;
+}
+
+.k-cap {
+  font-family: $kHead !important;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  font-size: u(0.62);
+  color: var(--k-muted);
+  height: u(1);
+  white-space: nowrap;
+}
+
+// header of an inventory
+.k-head-row {
+  display: flex;
+  align-items: center;
+  gap: u(0.8);
+  height: u(1.6);
+}
+
+.k-head-name {
+  flex: 1;
+  min-width: 0;
+  font-family: $kHead !important;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-size: u(0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  small {
+    font-family: $kBody;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    font-size: u(0.66);
+    color: var(--k-dim);
+    margin-left: u(0.6);
+  }
+}
+
+.k-head-info {
+  font-family: $kMono !important;
+  font-size: u(0.7);
+  color: var(--k-muted);
+  white-space: nowrap;
+}
+
+.k-find {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: u(0.35);
+  width: u(6.4);
+  height: u(1.45);
+  padding: 0 u(0.45);
+  border: 1px solid var(--k-line);
+  background: var(--k-surface);
+  cursor: text;
+
+  svg {
+    width: u(0.72);
+    height: u(0.72);
+    flex: none;
+    stroke: var(--k-dim);
+  }
+
+  input {
+    all: unset;
+    width: 100%;
+    min-width: 0;
+    font-size: u(0.66);
+    color: var(--k-text);
+
+    &::placeholder {
+      color: var(--k-dim);
+    }
+  }
+
+  &:focus-within {
+    border-color: var(--k-blue-soft);
+
+    svg {
+      stroke: var(--k-blue-soft);
+    }
+  }
+}
+
+.k-rule {
+  height: 2px;
+  background: var(--k-line);
+  margin: u(0.35) 0 u(0.55);
+
+  > div {
+    height: 100%;
+    background: var(--k-blue);
+    transition: width 0.2s;
+  }
+
+  .k-rule-full {
+    background: var(--k-bad);
+  }
+}
+
+// grid inventories (items take width x height cells)
+.grid-area {
+  position: relative;
+  background-color: var(--k-surface);
+  background-image:
+    linear-gradient(to right, var(--k-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--k-line) 1px, transparent 1px);
+  background-size: var(--grid-cell) var(--grid-cell);
+  box-shadow: inset -1px -1px 0 var(--k-line);
+}
+
+.grid-item {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: grab;
+
+  // the face of the item, one pixel inside its cells so the lines of the grid stay visible
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 2px 1px 1px 2px;
+    background: var(--k-item);
+    border: 1px solid var(--k-line-strong);
+  }
+
+  &:hover::before {
+    border-color: var(--k-blue-soft);
+  }
+}
+
+.grid-item-dim {
+  opacity: 0.16 !important;
+}
+
+.grid-item-hit::before {
+  border-color: var(--k-blue-soft);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.35);
+}
+
+.grid-item-image {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  padding: u(0.55);
+  background-origin: content-box;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  image-rendering: -webkit-optimize-contrast;
+  pointer-events: none;
+}
+
+.grid-item-top {
+  position: absolute;
+  top: u(0.3);
+  left: u(0.4);
+  right: u(0.4);
+  display: flex;
+  column-gap: u(0.3);
+  font-family: $kMono;
+  font-size: u(0.56);
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+
+// a narrow item whose count and weight do not fit side by side: weight right under the count
+.grid-item-top-stacked {
+  flex-direction: column;
+  row-gap: u(0.2);
+
+  .grid-item-weight {
+    margin-left: 0;
+  }
+}
+
+.grid-item-count {
+  color: var(--k-text);
+}
+
+.grid-item-weight {
+  margin-left: auto;
+  color: var(--k-muted);
+}
+
+.grid-item-bottom {
+  position: absolute;
+  left: u(0.4);
+  right: u(0.35);
+  bottom: u(0.3);
+  display: flex;
+  align-items: flex-end;
+  gap: u(0.3);
+  pointer-events: none;
+}
+
+.grid-item-label {
+  flex: 1;
+  min-width: 0;
+  font-size: u(0.62);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px #000;
+}
+
+.grid-item-hotkey {
+  font-family: $kMono;
+  font-size: u(0.56);
+  line-height: 1.35;
+  padding: 0 u(0.3);
+  background: var(--k-blue);
+  color: #fff;
+}
+
+.grid-item-durability {
+  position: absolute;
+  left: 2px;
+  right: 1px;
+  bottom: 1px;
+}
+
+.durability-bar {
+  height: 2px;
+}
+
+.grid-highlight {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 3;
+  border: 1px solid;
+}
+
+.grid-highlight-ok {
+  border-color: var(--k-ok);
+  background: rgba(52, 211, 153, 0.14);
+}
+
+.grid-highlight-swap {
+  border-color: var(--k-warn);
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.grid-highlight-no {
+  border-color: var(--k-bad);
+  background: rgba(248, 113, 113, 0.14);
+}
+
+// wallet of the player being searched, under their grid
+.grid-wallet {
+  display: flex;
+  align-items: center;
+  gap: u(0.5);
+  margin-top: u(0.5);
+
+  > p {
+    font-family: $kHead;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+    font-size: u(0.62);
+    color: var(--k-muted);
+    margin-right: u(0.3);
+  }
+
+  .inventory-slot {
+    width: var(--grid-cell);
+    height: var(--grid-cell);
+  }
+}
+
+// plain slots: clothing, shop, crafting, wallet of a searched player
+.inventory-slot {
+  box-sizing: border-box;
+  background-color: var(--k-surface);
+  background-size: 70%;
+  border: 1px solid var(--k-line);
+  border-radius: 0;
+  color: var(--k-text);
+}
+
+.inventory-slot-label-box {
+  background: none;
+  border: 0;
+  text-align: left;
+}
+
+.inventory-slot-label-text {
+  font-family: $kBody;
+  font-size: u(0.58);
+  text-transform: none;
+  padding: 0 u(0.3) u(0.2);
+  text-shadow: 0 1px 2px #000;
+}
+
+.item-slot-wrapper p,
+.item-slot-info-wrapper p {
+  font-family: $kMono;
+  font-size: u(0.56);
+}
+
+.item-slot-price-wrapper p,
+.item-slot-currency-wrapper p {
+  font-size: u(0.7);
+}
+
+.inventory-grid-container {
   display: grid;
-  grid-auto-rows: $equipmentSlot;
-  grid-template-columns: $equipmentSlot;
-  gap: calc(($containerSize - 7 * $equipmentSlot) / 6);
+  height: auto;
+  grid-template-columns: repeat(5, calc(var(--grid-cell) * 2));
+  grid-auto-rows: calc(var(--grid-cell) * 2);
+  gap: 0;
+  overflow: visible;
+
+  .inventory-slot {
+    margin: 0 -1px -1px 0;
+  }
 }
 
-.equipment-silhouette {
-  height: 44vh;
-  width: auto;
-  fill: $secondaryColor;
-  stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 0.6;
+// the character: outline with the clothing slots on both sides
+.k-body {
+  display: grid;
+  grid-template-columns: auto u(12) auto;
+  column-gap: u(1.2);
+  align-items: center;
+}
+
+.k-eq-column {
+  display: grid;
+  row-gap: u(0.5);
+}
+
+.k-eq-right .k-cap {
+  text-align: right;
+}
+
+.k-outline {
+  height: u(30);
+  justify-self: center;
+  fill: rgba(37, 99, 235, 0.05);
+  stroke: var(--k-blue-soft);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 #{u(0.6)} rgba(37, 99, 235, 0.6));
+  transition: fill 0.15s;
+}
+
+.k-body-over .k-outline {
+  fill: rgba(52, 211, 153, 0.16);
+  stroke: var(--k-ok);
 }
 
 .equipment-slot {
   position: relative;
-  width: $equipmentSlot;
-  height: $equipmentSlot;
+  width: var(--grid-cell);
+  height: var(--grid-cell);
 
   .inventory-slot {
-    position: absolute;
-    inset: 0;
-    background-size: 4.6vh;
+    width: 100%;
+    height: 100%;
+    background-size: 78%;
+    border-color: var(--k-line-strong);
+    background-color: var(--k-item);
   }
 
-  // compact item rendering: no weight/count header inside the small slot
   .item-slot-header-wrapper,
-  .item-hotslot-header-wrapper {
+  .item-hotslot-header-wrapper,
+  .inventory-slot-label-box {
     display: none;
   }
+}
 
-  .item-slot-wrapper {
-    justify-content: flex-end;
-  }
-
-  .inventory-slot-label-text {
-    font-size: 9px;
-    padding: 1px 2px;
-  }
+.equipment-slot-empty .inventory-slot {
+  border-color: var(--k-line);
+  background-color: var(--k-surface);
 }
 
 .equipment-slot-ghost {
   position: absolute;
-  inset: 0;
+  inset: 20%;
   background-repeat: no-repeat;
-  background-position: center 35%;
-  background-size: 3.4vh;
-  opacity: 0.22;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.16;
   pointer-events: none;
 }
 
 .equipment-slot-label {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 2px;
-  text-align: center;
-  font-family: $mainFont;
-  font-size: 1.05vh;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.55;
+  display: none;
+}
+
+.search-equipment {
+  display: grid;
+  grid-template-columns: repeat(7, var(--grid-cell));
+  gap: u(0.35);
+}
+
+// searched player: clothing and, in the last column, the two wallet slots. Eight cells wide like the
+// pockets and the backpack around it
+.k-sec-search {
+  width: calc(var(--grid-cell) * 8);
+
+  .search-equipment {
+    gap: 0;
+  }
+
+  .equipment-slot .inventory-slot,
+  .k-search-wallet .inventory-slot {
+    margin: 0 -1px -1px 0;
+  }
+}
+
+.k-search-row {
+  display: flex;
+}
+
+.k-search-wallet {
+  display: grid;
+  grid-auto-rows: var(--grid-cell);
+
+  // a square like the clothing slots: the picture and how much
+  .inventory-slot {
+    width: var(--grid-cell);
+    height: var(--grid-cell);
+    background-size: 62%;
+    background-position: center 70%;
+    border-color: var(--k-line-strong);
+  }
+
+  .inventory-slot-label-box {
+    display: none;
+  }
+
+  .item-slot-info-wrapper {
+    padding: u(0.2) u(0.3) 0;
+
+    p {
+      font-size: u(0.54);
+      color: var(--k-text);
+      text-shadow: 0 1px 2px #000;
+    }
+  }
+}
+
+// notifications inside the inventory, in the place and shape of the ones of ox_lib
+.k-notices {
+  position: fixed;
+  top: u(1.4);
+  right: u(1.4);
+  z-index: 120;
+  display: grid;
+  row-gap: u(0.5);
   pointer-events: none;
 }
 
-// progress of a timed move (clothing change or heavy transfer); clicking it cancels
-// (stays clickable while the inventories are busy)
-.slot-progress {
+.k-notice {
+  position: relative;
+  box-sizing: border-box;
+  width: u(20);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: u(0.7);
+  align-items: start;
+  padding: u(0.7) u(0.8) u(0.8);
+  overflow: hidden;
+  background: var(--k-menu);
+  border: 1px solid var(--k-line-strong);
+  box-shadow: 0 #{u(0.6)} #{u(1.6)} rgba(0, 0, 0, 0.6);
+  font-size: u(0.72);
+  line-height: 1.4;
+  color: var(--k-muted);
+  pointer-events: auto;
+  --k-notice: var(--k-blue-soft);
+
+  svg {
+    width: u(1.25);
+    height: u(1.25);
+    stroke: var(--k-notice);
+  }
+
+  b {
+    display: block;
+    font-family: $kHead;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: u(0.8);
+    color: var(--k-text);
+  }
+
+  span {
+    color: var(--k-text);
+  }
+
+  b + span {
+    color: var(--k-muted);
+  }
+
+  button {
+    all: unset;
+    font-size: u(0.66);
+    color: var(--k-dim);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--k-text);
+    }
+  }
+
+  // time left
+  i {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--k-notice);
+    transform-origin: left;
+    animation: k-notice-time linear forwards;
+  }
+}
+
+.k-notice-error {
+  --k-notice: var(--k-bad);
+}
+
+.k-notice-success {
+  --k-notice: var(--k-ok);
+}
+
+.k-notice-warning {
+  --k-notice: var(--k-warn);
+}
+
+@keyframes k-notice-time {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+// shortcuts, wallet and quantity, under the character
+.k-dock {
+  display: grid;
+  row-gap: u(0.9);
+}
+
+.hotbar-shortcuts {
+  display: flex;
+  gap: u(0.5);
+}
+
+.hotbar-shortcut {
+  position: relative;
+  box-sizing: border-box;
+  width: var(--grid-cell);
+  height: var(--grid-cell);
+  border: 1px solid var(--k-line);
+  background: var(--k-surface);
+
+  .grid-item-hotkey {
+    position: absolute;
+    top: u(0.2);
+    left: u(0.3);
+    background: rgba(51, 65, 85, 0.9);
+    color: var(--k-muted);
+  }
+
+  &.hotbar-shortcut-set .grid-item-hotkey {
+    background: var(--k-blue);
+    color: #fff;
+  }
+
+  .grid-item-count {
+    position: absolute;
+    right: u(0.3);
+    bottom: u(0.25);
+    font-family: $kMono;
+    font-size: u(0.56);
+    text-shadow: 0 1px 2px #000;
+  }
+}
+
+.hotbar-shortcut-over {
+  border-color: var(--k-ok);
+  background: rgba(52, 211, 153, 0.14);
+}
+
+.hotbar-shortcut-image {
+  position: absolute;
+  inset: 14%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.k-purse {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--grid-cell) * 1.7);
+  column-gap: u(0.5);
+}
+
+.k-wallet {
+  display: grid;
+  row-gap: u(0.3);
+
+  .k-cap {
+    margin-bottom: u(-0.3);
+  }
+}
+
+.k-money {
+  box-sizing: border-box;
+  height: calc((var(--grid-cell) - #{u(0.3)}) / 2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: u(0.6);
+  padding: 0 u(0.6);
+  border: 1px solid var(--k-line);
+  background: var(--k-surface);
+  font-size: u(0.66);
+  color: var(--k-muted);
+  white-space: nowrap;
+  cursor: grab;
+
+  &:hover,
+  &.k-money-over {
+    border-color: var(--k-blue-soft);
+  }
+
+  i {
+    display: inline-block;
+    width: u(0.42);
+    height: u(0.42);
+    border-radius: 50%;
+    margin-right: u(0.45);
+    background: var(--k-ok);
+  }
+
+  .k-money-dirty {
+    background: var(--k-bad);
+  }
+
+  b {
+    font-family: $kMono;
+    font-weight: 500;
+    color: var(--k-text);
+  }
+}
+
+.k-qty label {
+  position: relative;
+  box-sizing: border-box;
+  display: block;
+  height: var(--grid-cell);
+  border: 1px solid var(--k-line-strong);
+  background: var(--k-surface);
+  cursor: text;
+
+  &:focus-within {
+    border-color: var(--k-blue-soft);
+  }
+
+  input {
+    all: unset;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    font-family: $kMono;
+    font-size: u(0.95);
+    color: var(--k-text);
+
+    &::placeholder {
+      font-family: $kBody;
+      font-size: u(0.7);
+      color: var(--k-dim);
+    }
+  }
+
+  button {
+    all: unset;
+    display: none;
+    position: absolute;
+    top: u(0.1);
+    right: u(0.3);
+    font-size: u(0.62);
+    color: var(--k-dim);
+    cursor: pointer;
+  }
+
+  &.k-qty-set button {
+    display: block;
+  }
+}
+
+.k-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--k-line);
+  padding-top: u(0.5);
+  font-size: u(0.68);
+  color: var(--k-muted);
+  white-space: nowrap;
+
+  span + span {
+    margin-left: u(1.2);
+  }
+}
+
+// timed move running on a slot, and a move waiting its turn
+.slot-progress,
+.slot-queued {
   position: absolute;
   inset: 0;
-  z-index: 2;
-  pointer-events: auto;
-  cursor: pointer;
-  overflow: hidden;
-  border-radius: 2.5%;
-  background-color: rgba(0, 0, 0, 0.45);
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  pointer-events: auto;
+  font-family: $kMono;
+  font-size: u(0.9);
+  color: #fff;
+  background: rgba(5, 6, 8, 0.6);
+}
+
+.slot-queued {
+  box-sizing: border-box;
+  border: 1px dashed var(--k-warn);
+  color: var(--k-warn);
 }
 
 .slot-progress-fill {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 100%;
-  background-color: rgba(46, 204, 113, 0.45);
+  inset: 0;
+  background: rgba(37, 99, 235, 0.45);
   transform-origin: bottom;
   animation-name: equipment-progress;
   animation-timing-function: linear;
@@ -680,9 +1516,6 @@ $equipmentSlot: 6.6vh;
 
 .slot-progress-cancel {
   position: relative;
-  font-family: $mainFont;
-  font-size: 2vh;
-  color: #fff;
   opacity: 0.85;
 }
 
@@ -695,273 +1528,214 @@ $equipmentSlot: 6.6vh;
   }
 }
 
-// klsh: player's inventory with the worn backpack below it
-.inventory-left-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2vh;
-}
-
-.backpack-grid-container {
-  // two rows visible, the rest scrolls
-  height: calc(2 * #{$gridSize + 0.22vh} + #{$gridGap});
-}
-
-// klsh: narrow screens (below 16:10) drop the silhouette to save width
-@media (max-aspect-ratio: 16/10) {
-  .equipment-silhouette {
-    display: none;
-  }
-}
-
-// klsh: grid inventories (items take width x height cells)
-:root {
-  --grid-cell: 6vh;
-}
-
-.grid-scroll {
-  overflow-x: hidden;
-}
-
-.grid-area {
-  position: relative;
-  flex-shrink: 0;
-  background-color: $secondaryColor;
-  // cell lines
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: var(--grid-cell) var(--grid-cell);
-  outline: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.grid-item {
-  position: absolute;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background-color: rgba(255, 255, 255, 0.07);
-  border-radius: 2px;
-  overflow: hidden;
-  color: $textColor;
-  font-family: $mainFont;
-
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.14);
-  }
-}
-
-.grid-item-image {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  image-rendering: -webkit-optimize-contrast;
-  pointer-events: none;
-}
-
-.grid-item-count {
-  position: absolute;
-  right: 3px;
-  top: 1px;
-  font-size: 1.3vh;
-  text-shadow: 0 0 3px #000, 0 0 3px #000;
-  pointer-events: none;
-}
-
-.grid-item-hotkey {
-  position: absolute;
-  left: 0;
-  top: 0;
-  padding: 0 3px;
-  font-size: 1.2vh;
-  background-color: $textColor;
-  color: #000;
-  border-bottom-right-radius: 2px;
-  pointer-events: none;
-}
-
-.grid-item-label {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 0 3px;
-  font-size: 1.1vh;
-  text-transform: uppercase;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background-color: rgba(0, 0, 0, 0.45);
-  pointer-events: none;
-}
-
-.grid-item-durability {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-.grid-highlight {
-  position: absolute;
-  box-sizing: border-box;
-  pointer-events: none;
-  z-index: 3;
-  border: 2px solid transparent;
-}
-
-.grid-highlight-ok {
-  background-color: rgba(46, 204, 113, 0.28);
-  border-color: rgba(46, 204, 113, 0.8);
-}
-
-.grid-highlight-swap {
-  background-color: rgba(241, 196, 15, 0.28);
-  border-color: rgba(241, 196, 15, 0.8);
-}
-
-.grid-highlight-no {
-  background-color: rgba(231, 76, 60, 0.28);
-  border-color: rgba(231, 76, 60, 0.8);
-}
-
-.grid-wallet {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.6vh;
-
-  p {
-    font-size: 14px;
-    margin-right: auto;
-  }
-
-  // one cell each, like any 1 x 1 item
-  .inventory-slot {
-    width: var(--grid-cell);
-    height: var(--grid-cell);
-    background-size: 70%;
-    background-position: center;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    box-sizing: border-box;
-  }
-
-  .inventory-slot-label-box {
-    display: none;
-  }
-
-  .item-slot-info-wrapper p {
-    font-size: 1.2vh;
-    text-shadow: 0 0 3px #000, 0 0 3px #000;
-  }
-
-  .item-slot-info-wrapper p:first-child {
-    display: none;
-  }
-}
-
-// klsh: hotbar shortcuts below the equipment panel
-.equipment-side {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2vh;
-}
-
-.hotbar-panel {
-  display: flex;
-  flex-direction: column;
-  gap: calc($gridGap * 2);
-  color: $textColor;
-
-  p {
-    font-size: 16px;
-  }
-}
-
-.hotbar-shortcuts {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  gap: 0.5vh;
-}
-
-.hotbar-shortcut {
-  position: relative;
+// item following the pointer, with what dropping here would do
+.item-drag-preview {
   width: var(--grid-cell);
   height: var(--grid-cell);
-  box-sizing: border-box;
-  background-color: $secondaryColor;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 2px;
-  font-family: $mainFont;
+  z-index: 100;
+  background-size: contain;
 }
 
-.hotbar-shortcut-over {
-  border-color: rgba(46, 204, 113, 0.8);
-  background-color: rgba(46, 204, 113, 0.28);
-}
-
-.hotbar-shortcut-image {
+.k-drag-tag {
   position: absolute;
-  inset: 0;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 70%;
-  pointer-events: none;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, #{u(0.3)});
+  white-space: nowrap;
+  font-family: $kHead;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  font-size: u(0.66);
+  padding: u(0.15) u(0.55);
+  color: var(--k-warn);
+  background: rgba(8, 11, 18, 0.92);
+  border: 1px solid rgba(251, 191, 36, 0.5);
 }
 
-// klsh: search (equipment and backpack of another player)
-.search-panel {
+// floating layers: tooltip, context menu, dialog
+.tooltip-wrapper {
+  box-sizing: border-box;
+  width: u(13.5);
+  min-width: u(13.5);
+  padding: u(0.6) u(0.8);
+  background: var(--k-menu);
+  border: 1px solid var(--k-line-strong);
+  border-radius: 0;
+  box-shadow: 0 #{u(0.8)} #{u(2)} rgba(0, 0, 0, 0.6);
+  color: var(--k-muted);
+  font-family: $kBody;
+  z-index: 90;
+
+  p {
+    font-family: $kBody;
+    font-size: u(0.68);
+    line-height: 1.55;
+  }
+}
+
+.tooltip-header-wrapper p {
+  font-family: $kHead;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  font-size: u(0.86);
+  color: var(--k-text);
+}
+
+.context-menu-list {
+  min-width: u(13.5);
+  padding: 0 0 u(0.3);
+  background: var(--k-menu);
+  border: 1px solid var(--k-line-strong);
+  border-radius: 0;
+  box-shadow: 0 #{u(0.8)} #{u(2)} rgba(0, 0, 0, 0.6);
+  color: var(--k-text);
+  font-family: $kBody;
+  z-index: 95;
+}
+
+// one line: the name, then how many and how heavy
+.context-menu-head {
   display: flex;
-  flex-direction: column;
-  gap: 1.2vh;
-  color: $textColor;
+  align-items: baseline;
+  gap: u(0.6);
+  padding: u(0.55) u(0.8) u(0.5);
+  margin-bottom: u(0.3);
+  border-bottom: 1px solid var(--k-line);
+  white-space: nowrap;
+
+  b {
+    font-family: $kHead;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+    font-size: u(0.86);
+  }
+
+  span {
+    margin-left: auto;
+    font-family: $kMono;
+    font-size: u(0.62);
+    color: var(--k-muted);
+  }
 }
 
-.outfit-panel.search-equipment {
-  grid-template-columns: repeat(6, var(--grid-cell));
+.context-menu-item {
+  padding: u(0.38) u(0.8);
+  border-radius: 0;
+  border-left: 2px solid transparent;
+  color: var(--k-text);
+  font-family: $kBody;
+  font-size: u(0.72);
+  text-align: left;
+
+  small {
+    font-family: $kMono;
+    font-size: u(0.58);
+    color: var(--k-dim);
+  }
+
+  &:hover,
+  &:focus {
+    background-color: rgba(37, 99, 235, 0.16);
+    border-left-color: var(--k-blue);
+  }
 }
 
-.search-equipment {
+.k-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
   display: grid;
-  grid-template-columns: repeat(7, var(--grid-cell));
-  grid-auto-rows: var(--grid-cell);
-  gap: 0.4vh;
-
-  .equipment-slot,
-  .equipment-slot .inventory-slot {
-    width: var(--grid-cell);
-    height: var(--grid-cell);
-  }
-
-  .equipment-slot-label,
-  .inventory-slot-label-box,
-  .item-slot-info-wrapper {
-    display: none;
-  }
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
 }
 
-// klsh: item with a move waiting in the queue; the number is its turn, clicking clears the queue
-.slot-queued {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5);
-  border: 1px dashed rgba(241, 196, 15, 0.8);
+.k-dialog {
   box-sizing: border-box;
-  color: #f1c40f;
-  font-family: $mainFont;
-  font-size: 2vh;
-  cursor: pointer;
-  pointer-events: auto;
+  width: u(17);
+  padding: u(1) u(1.1) u(1.1);
+  background: var(--k-menu);
+  border: 1px solid var(--k-line-strong);
+  box-shadow: 0 #{u(0.8)} #{u(2)} rgba(0, 0, 0, 0.6);
+
+  h3 {
+    margin: 0;
+    font-family: $kHead;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: u(1.05);
+  }
+
+  > p {
+    font-size: u(0.68);
+    color: var(--k-muted);
+    margin: u(0.15) 0 u(0.8);
+  }
+
+  input[type='range'] {
+    display: block;
+    width: 100%;
+    margin: u(0.8) 0 u(0.6);
+    accent-color: var(--k-blue);
+  }
+
+  button {
+    all: unset;
+    box-sizing: border-box;
+    flex: 1;
+    padding: u(0.42);
+    text-align: center;
+    font-family: $kHead;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+    font-size: u(0.74);
+    border: 1px solid var(--k-line-strong);
+    color: var(--k-muted);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--k-text);
+      border-color: var(--k-blue-soft);
+    }
+  }
+
+  .k-primary {
+    background: var(--k-blue);
+    border-color: var(--k-blue);
+    color: #fff;
+  }
 }
+
+.k-dialog-input {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: u(2.1);
+  border: 1px solid var(--k-line-strong);
+  background: rgba(8, 11, 18, 0.7);
+  text-align: center;
+  font-family: $kMono;
+  font-size: u(0.9);
+  color: var(--k-text);
+
+  &:focus {
+    border-color: var(--k-blue-soft);
+  }
+}
+
+.k-dialog-row {
+  display: flex;
+  gap: u(0.4);
+
+  & + & {
+    margin-top: u(0.9);
+  }
+}
+
 
 // klsh: force bar of a throw
 .throw-charge {

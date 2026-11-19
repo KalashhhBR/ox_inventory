@@ -30,6 +30,8 @@ export type Inventory = {
   // klsh: grid inventories; h includes extra legacy rows; wallet = number of cells when the last two
   // identifiers are the wallet slots (player only)
   grid?: { w: number; h: number; wallet?: number };
+  // klsh: ground with more than one drop within reach (index 0 = none of them shown)
+  nav?: { index: number; count: number };
 };
 
 export type EquipmentCategory = {

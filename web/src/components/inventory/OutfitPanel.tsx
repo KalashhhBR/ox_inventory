@@ -2,12 +2,11 @@
 import React from 'react';
 import { Inventory } from '../../typings';
 import EquipmentSlot from './EquipmentSlot';
+import PanelHeader from './PanelHeader';
 
 const OutfitPanel: React.FC<{ inventory: Inventory }> = ({ inventory }) => (
-  <div className="inventory-grid-wrapper">
-    <div className="inventory-grid-header-wrapper">
-      <p>{inventory.label}</p>
-    </div>
+  <div className="k-sec">
+    <PanelHeader label={inventory.label} />
     <div className="search-equipment outfit-panel">
       {inventory.categories?.map((category, index) =>
         category.hidden ? null : (

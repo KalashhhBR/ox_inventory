@@ -16,6 +16,15 @@ export type GridTarget =
 
 const firstSlot = (inventory: Inventory) => inventory.items.find((slot) => !isSlotWithItem(slot))?.slot || 1;
 
+// how many units of a stack the next move takes: half with Shift, the typed quantity, or all of it
+export const movingCount = (total: number) => {
+  const { shiftPressed, itemAmount } = store.getState().inventory;
+
+  if (shiftPressed && total > 1) return Math.floor(total / 2);
+
+  return itemAmount === 0 || itemAmount > total ? total : itemAmount;
+};
+
 export const onGridDrop = (source: DragSource, inventory: Inventory, target: GridTarget) => {
   if (source.inventory === InventoryType.SHOP)
     return onBuy(source, { inventory: inventory.type, item: { slot: firstSlot(inventory) } });
@@ -54,14 +63,7 @@ export const onGridDrop = (source: DragSource, inventory: Inventory, target: Gri
 
   if (target.action === 'stack' && !(sourceData.stack && canStack(sourceSlot, target.item))) return;
 
-  const count =
-    target.action === 'swap'
-      ? sourceSlot.count
-      : state.shiftPressed && sourceSlot.count > 1
-        ? Math.floor(sourceSlot.count / 2)
-        : state.itemAmount === 0 || state.itemAmount > sourceSlot.count
-          ? sourceSlot.count
-          : state.itemAmount;
+  const count = target.action === 'swap' ? sourceSlot.count : movingCount(sourceSlot.count);
 
   enqueueMove({
       fromSlot: sourceSlot.slot,

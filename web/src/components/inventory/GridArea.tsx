@@ -9,18 +9,25 @@ import { getDragRotated, setDragRotated, useDragRotated } from '../../store/grid
 import { Items } from '../../store/items';
 import { useAppDispatch, store } from '../../store';
 import { closeTooltip } from '../../store/tooltip';
-import { GridTarget, onGridDrop } from '../../dnd/onGridDrop';
+import { GridTarget, movingCount, onGridDrop } from '../../dnd/onGridDrop';
 import { getInventoryByType } from '../../helpers';
 import GridItem from './GridItem';
 import InventorySlot from './InventorySlot';
 import { Locale } from '../../store/locale';
+import { matchesQuery } from '../../helpers/format';
 
 type Hover = { x: number; y: number; w: number; h: number; state: 'ok' | 'swap' | 'no'; target: GridTarget | null };
 
 const sameHover = (a: Hover | null, b: Hover | null) =>
   a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && a.state === b.state);
 
-const GridArea: React.FC<{ inventory: Inventory; maxRows?: number }> = ({ inventory, maxRows }) => {
+// query = search of this inventory; hideWallet = the wallet slots are drawn somewhere else
+const GridArea: React.FC<{ inventory: Inventory; maxRows?: number; query?: string; hideWallet?: boolean }> = ({
+  inventory,
+  maxRows,
+  query,
+  hideWallet,
+}) => {
   const grid = inventory.grid!;
   const areaRef = useRef<HTMLDivElement>(null);
   const dispatch = useAppDispatch();
@@ -42,8 +49,18 @@ const GridArea: React.FC<{ inventory: Inventory; maxRows?: number }> = ({ invent
     if (px < 1 || py < 1 || px > grid.w || py > grid.h) return null;
 
     const sameInventory = source.inventory === inventory.type;
-    const self = sameInventory ? source.item.slot : undefined;
+    const own = sameInventory ? items.find((item) => item.slot === source.item.slot) : undefined;
+    // moving only part of a stack inside its own inventory: the rest stays where it is, so the place
+    // it takes is not free (the server refuses it; the highlight says so beforehand)
+    const partial = !!own && movingCount(own.count) < own.count;
+    const self = sameInventory && !partial ? source.item.slot : undefined;
     const under = itemAt(items, px, py);
+
+    if (partial && under && under.slot === own!.slot) {
+      const [ow, oh] = footprint(Items[under.name]?.size || [1, 1], under.rotated);
+
+      return { x: under.x, y: under.y, w: ow, h: oh, state: 'no', target: null };
+    }
 
     if (under && under.slot !== self) {
       const [uw, uh] = footprint(Items[under.name]?.size || [1, 1], under.rotated);
@@ -136,7 +153,8 @@ const GridArea: React.FC<{ inventory: Inventory; maxRows?: number }> = ({ invent
 
   const shown = hover;
   // the player's own wallet, or the wallet of the player being searched
-  const wallet = inventory.type === InventoryType.PLAYER || inventory.type === 'otherplayer' ? grid.wallet : undefined;
+  const wallet =
+    !hideWallet && (inventory.type === InventoryType.PLAYER || inventory.type === 'otherplayer') ? grid.wallet : undefined;
 
   return (
     <>
@@ -157,7 +175,12 @@ const GridArea: React.FC<{ inventory: Inventory; maxRows?: number }> = ({ invent
           }}
         >
           {items.map((item: GridItemData) => (
-            <GridItem key={`${inventory.id}-${item.slot}`} item={item} inventory={inventory} />
+            <GridItem
+              key={`${inventory.id}-${item.slot}`}
+              item={item}
+              inventory={inventory}
+              match={query ? matchesQuery(item, query) : undefined}
+            />
           ))}
           {shown && (
             <div

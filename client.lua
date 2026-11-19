@@ -308,6 +308,11 @@ function client.openInventory(inv, data)
 
     Equipment.outfitPayload(right) -- klsh
 
+    -- klsh: the right side is the ground itself: tell the NUI when there are other drops to go through
+    if currentInventory.type == 'drop' or currentInventory.type == 'newdrop' then
+        currentInventory.nav = client.dropNavigation(currentInventory.id)
+    end
+
     SendNUIMessage({
         action = 'setupInventory',
         data = {
@@ -2070,6 +2075,105 @@ RegisterNUICallback('exit', function(_, cb)
 	cb(1)
 end)
 
+-- klsh: drops the player can reach from where they stand, nearest first. The ground shown on the
+-- screen is one of them; with more than one the NUI offers to go through them
+local function dropsWithinReach()
+	local reach = {}
+	local radius = require('modules.equipment.shared').groundDistance
+	local coords = GetEntityCoords(playerPed)
+
+	if type(radius) ~= 'number' then radius = 2.0 end
+
+	if client.drops then
+		for dropId, point in pairs(client.drops) do
+			local distance = #(coords - point.coords)
+
+			if distance <= radius then reach[#reach + 1] = { id = dropId, distance = distance } end
+		end
+	end
+
+	table.sort(reach, function(a, b)
+		if a.distance == b.distance then return tostring(a.id) < tostring(b.id) end
+
+		return a.distance < b.distance
+	end)
+
+	return reach
+end
+
+---@return { index: number, count: number }? nav only with more than one drop within reach
+-- (a field of `client`: client.openInventory, defined above, calls it)
+function client.dropNavigation(currentId)
+	local reach = dropsWithinReach()
+
+	if #reach < 2 then return end
+
+	local index = 0
+
+	for i = 1, #reach do
+		if reach[i].id == currentId then index = i end
+	end
+
+	return { index = index, count = #reach }
+end
+
+RegisterNUICallback('klshCycleGround', function(step, cb)
+	cb(1)
+
+	if not invOpen or invHidden or invBusy then return end
+
+	-- ground section under another inventory: the server keeps which drop it is
+	if client.klshGround then
+		local ground = lib.callback.await('ox_inventory:klsh:cycleGround', 200, step == -1 and -1 or 1)
+
+		if ground then SendNUIMessage({ action = 'setGround', data = ground }) end
+
+		return
+	end
+
+	-- nothing else open: the inventory on the right is the drop itself
+	if currentInventory.type ~= 'drop' and currentInventory.type ~= 'newdrop' then return end
+
+	local reach = dropsWithinReach()
+
+	if #reach == 0 then return end
+
+	local current = 0
+
+	for i = 1, #reach do
+		if reach[i].id == currentInventory.id then current = i end
+	end
+
+	local target = reach[(current - 1 + (step == -1 and -1 or 1)) % #reach + 1]
+
+	if target.id ~= currentInventory.id then client.openInventory('drop', { id = target.id }) end
+end)
+
+-- klsh: with the inventory on screen the notifications of ox_lib are drawn behind it. While it is
+-- visible, what this resource notifies is shown inside the inventory instead, and what the server
+-- sends through ox_lib is repeated there
+local function inventoryNotice(data)
+	if type(data) ~= 'table' or not invOpen or invHidden then return false end
+
+	SendNUIMessage({ action = 'klshNotify', data = { title = data.title, description = data.description, type = data.type } })
+
+	return true
+end
+
+rawset(lib, 'notify', function(data)
+	if not inventoryNotice(data) then exports.ox_lib:notify(data) end
+end)
+
+RegisterNetEvent('ox_lib:notify', inventoryNotice)
+
+-- klsh: a text field of the inventory (search, quantity, split) has the keyboard: the game stops
+-- hearing the keys meanwhile, so typing does not walk, use shortcuts or close the inventory
+RegisterNUICallback('klshTyping', function(typing, cb)
+	cb(1)
+
+	if invOpen and not invHidden then SetNuiFocusKeepInput(typing ~= true) end
+end)
+
 -- klsh: the NUI tells when its queue of moves starts and when it runs out
 RegisterNUICallback('klshQueue', function(data, cb)
 	cb(1)
@@ -2165,6 +2269,13 @@ RegisterNUICallback('swapItems', function(data, cb)
 		else
 			lib.notify({ type = 'error', description = locale(response) })
 		end
+	end
+
+	-- klsh: see `debug` in data/grid.lua
+	if shared.grid and shared.grid.debug then
+		print(('[klsh grid] %s %s -> %s slot=%s x=%s y=%s rotated=%s count=%s : %s %s'):format(
+			tostring(data.fromType), tostring(data.fromSlot), tostring(data.toType), tostring(data.toSlot), tostring(data.toX), tostring(data.toY),
+			tostring(data.rotated), tostring(data.count), success and 'ok' or 'REFUSED', type(response) == 'string' and response or ''))
 	end
 end)
 

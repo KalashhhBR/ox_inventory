@@ -1799,6 +1799,9 @@ local function dropItem(source, playerInventory, fromData, data)
 
 		TriggerClientEvent('ox_inventory:klsh:droppedInto', source, dropId, mergeDrop.coords, owner and true or false, slot)
 	else
+		-- klsh: a new drop starts at its first cell, not at the place the item had where it came from
+		toData.x, toData.y, toData.rotated = nil, nil, nil
+
 		local inventory = Inventory.Create(dropId, ('Drop %s'):format(dropId:gsub('%D', '')), 'drop', shared.dropslots, toData.weight, shared.dropweight, false, {[data.toSlot] = toData})
 
 		if not inventory then hooks.success = false return end
@@ -2256,8 +2259,11 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 				end
 			end
 
-			Equipment.postSwap(playerInventory, fromInventory, toInventory) -- klsh
+			-- klsh: positions first. Equipment.postSwap may wait (it loads the content of a backpack that
+			-- was just put on), and the thread above would then send the slots before they had a place:
+			-- the piece that came back to the pockets stayed invisible to its owner while taking room
 			Grid.postSwap(playerInventory, fromInventory, toInventory, data) -- klsh
+			Equipment.postSwap(playerInventory, fromInventory, toInventory) -- klsh
 
 			return containerItem and containerItem.weight or true, nil, weaponSlot
 		end

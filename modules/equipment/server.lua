@@ -341,35 +341,57 @@ local function linkGround(playerInv, dropId)
 end
 
 ---@param playerInv OxInventory
----@return string? dropId nearest drop to the player, inside the configured distance and same instance
-local function findNearestDrop(playerInv)
+---@return string[] dropIds drops inside the configured distance and in the player's instance, nearest first
+local function nearbyDrops(playerInv)
     local ped = GetPlayerPed(playerInv.id)
+    local found = {}
 
-    if ped == 0 then return end
+    if ped == 0 then return found end
 
     local coords = GetEntityCoords(ped)
     local instance = Player(playerInv.id).state.instance
-    local nearest, nearestDistance
 
     for dropId, drop in pairs(Inventory.Drops) do
         if drop.coords and (not drop.instance or drop.instance == instance) then
             local distance = #(coords - drop.coords)
 
-            if distance <= data.groundDistance and (not nearestDistance or distance < nearestDistance) then
-                nearest, nearestDistance = dropId, distance
+            if distance <= data.groundDistance then
+                found[#found + 1] = { id = dropId, distance = distance }
             end
         end
     end
 
-    return nearest
+    table.sort(found, function(a, b)
+        if a.distance == b.distance then return tostring(a.id) < tostring(b.id) end
+
+        return a.distance < b.distance
+    end)
+
+    for i = 1, #found do found[i] = found[i].id end
+
+    return found
+end
+
+---@param playerInv OxInventory
+---@return string? dropId nearest drop to the player, inside the configured distance and same instance
+local function findNearestDrop(playerInv)
+    return nearbyDrops(playerInv)[1]
 end
 
 ---@param playerInv OxInventory
 ---@return table payload ground section for the NUI: the linked drop, or an empty area for a new drop
 local function getGroundPayload(playerInv)
     local drop = getGround(playerInv)
+    local reach = nearbyDrops(playerInv)
+    local index = 0
+
+    for i = 1, #reach do
+        if drop and reach[i] == drop.id then index = i end
+    end
 
     return {
+        -- more than one drop within reach: the NUI lets the player go through them
+        nav = #reach > 1 and { index = index, count = #reach } or nil,
         id = drop and drop.id or 'newground',
         type = data.groundType,
         label = locale('equipment_ground'),
@@ -397,6 +419,34 @@ function Equipment.groundPayload(playerInv, right)
 
     return getGroundPayload(playerInv)
 end
+
+---The player asked for the next (or previous) drop within reach as the ground section.
+lib.callback.register('ox_inventory:klsh:cycleGround', function(source, step)
+    local playerInv = Inventory.GetLoaded(source)
+
+    if not playerInv or not data.groundDistance or not playerInv.open or playerInv.open == playerInv.id then return end
+
+    -- the same conditions under which the ground section exists (Equipment.groundPayload)
+    local right = Inventory.GetLoaded(playerInv.open)
+    local ped = GetPlayerPed(source)
+
+    if not right or right == playerInv or right.type == 'drop' or right.type == 'shop' or right.player then return end
+    if ped == 0 or GetVehiclePedIsIn(ped, false) ~= 0 then return end
+
+    local reach = nearbyDrops(playerInv)
+
+    if #reach == 0 then return end
+
+    local current = 0
+
+    for i = 1, #reach do
+        if reach[i] == playerInv.klshGroundId then current = i end
+    end
+
+    linkGround(playerInv, reach[(current - 1 + (step == -1 and -1 or 1)) % #reach + 1])
+
+    return getGroundPayload(playerInv)
+end)
 
 ---The player closed the inventory.
 ---@param playerInv OxInventory

@@ -90,6 +90,12 @@ local ok, reason = exports.ox_inventory:SearchPlayer(source, target, {
 - Prisão: use `ConfiscateInventory` na entrada e `ReturnInventory` na saída.
 - Não guarde número de slot entre chamadas esperando que seja uma posição.
 
+## Interface (0.24.0)
+
+- **Teclas com o inventário aberto:** a interface usa Ctrl, Shift, Alt e R. Resources que usam essas teclas (agachar, por exemplo) devem ignorar o comando quando `LocalPlayer.state.invOpen` for verdadeiro; esse estado já existe no original.
+- **Notificações:** com o inventário aberto, o que chega pelo evento `ox_lib:notify` é mostrado também dentro da tela do inventário. Nada muda para quem envia.
+- **Hook `swapItems`:** soltar no chão arrastando para fora da tela gera o mesmo movimento do antigo botão Soltar (`toInventory` é `'newdrop'` ou o id do drop próximo com espaço).
+
 ## Bolsa de estilo (0.18.0)
 
 - Item `outfit_bag`: container cujo id começa com `outfit-`; o conteúdo (até 12 roupas, slot = categoria)

@@ -11,6 +11,49 @@ Cada versão traz **tudo o que mudou desde a versão anterior**, sempre nestas q
 
 Seção sem itens aparece como "Nada nesta versão".
 
+## 0.24.1 (2026-11-18)
+
+Mudanças desde a 0.22.1.
+
+### Adicionado
+
+**Interface nova**
+- Tela redesenhada em três zonas: à esquerda o que o jogador carrega (bolsos e mochila vestida), no centro o personagem com os slots de roupa, os atalhos, a carteira e o campo de quantidade, e à direita o inventário aberto (porta-malas, baú, revista) com o chão embaixo.
+- Barra de abas no topo. **Inventário** é a única ativa; Saúde, Crafting e Habilidades aparecem apagadas, reservadas para versões futuras.
+- **Busca** em cada inventário da tela: o que não bate com o texto fica apagado.
+- **Peso no item:** cada item mostra o peso total da pilha; o tooltip traz peso por unidade e peso total. O cabeçalho dos bolsos mostra o total carregado (bolsos mais mochila, já com a redução) sobre o máximo.
+- **Campo Quantidade** no centro da tela: vale para arrastar, mover rápido, soltar no chão e para a carteira. Vazio significa tudo.
+- **Dividir** pelo menu de contexto, com uma janela para escolher quanto separar.
+- **Arrastar para fora dos inventários larga no chão.**
+- **Arrastar para o personagem:** roupa, colete e mochila são vestidos (trocando com o que estiver no slot); os outros itens são usados.
+- **Menu de contexto** (botão direito) no visual novo, com Usar, Vestir, Mover rápido, Dividir, Arremessar, Dar, Renomear e Soltar no chão.
+- **Carteira arrastável e com menu próprio:** dinheiro e dinheiro sujo podem ser arrastados para outro inventário, para o chão, dados ou arremessados.
+- **Navegação entre drops:** com mais de um drop ao alcance, setas no cabeçalho do chão trocam o drop mostrado.
+- **Avisos dentro do inventário:** com a tela aberta, as notificações do ox_lib aparecem também por cima dela, no mesmo estilo.
+- Rodapé com as teclas (girar, metade, mover rápido, usar, ações).
+- Destaque vermelho ao tentar soltar parte de uma pilha em cima dela mesma.
+- Chaves `ui_*` novas em `locales/` (abas, rótulos, dicas), mais `ui_decimal` e `ui_thousands` para os separadores dos números.
+- Seção "Interface" no `CONFIG.md`.
+
+### Removido
+
+- O botão e a área "Soltar" da interface antiga: largar passa a ser arrastar para fora ou usar o menu.
+- O "×" antes da quantidade no item.
+
+### Ajuste
+
+- Na revista, roupas e carteira do revistado ficam num bloco só, "Equipamento e carteira".
+- A carteira ocupa dois slots quadrados (imagem e quantidade); sem dinheiro, o slot fica vazio.
+- Cada inventário ocupa na tela a largura da própria grade. Quando a coluna passa da altura da tela, só o último inventário dela ganha rolagem.
+- Tamanhos padrão para alinhar a tela: chão `10 × 5` (`drop` em `data/grid.lua`), mochila pequena `8 × 2` e média `8 × 4` (`backpacks` em `data/equipment.lua`). Quem já ajustou esses arquivos não precisa mudar; a grade só fica mais estreita que a coluna.
+- Item largado num drop novo entra na primeira posição livre, e não na posição que tinha no inventário de origem.
+- A interface é medida a partir de uma área 16:9 centralizada: em telas 5:4 e ultrawide ela não passa mais da largura.
+- Fontes Inter e Rajdhani carregadas do Google Fonts em `web/index.html`.
+
+### Bugs consertados
+
+Nada nesta versão.
+
 ## 0.22.1 (2026-11-17)
 
 Mudanças desde a 0.18.1.

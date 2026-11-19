@@ -235,13 +235,15 @@ export const MenuComponent = React.forwardRef<HTMLButtonElement, MenuProps & Rea
 
 interface MenuItemProps {
   label: string;
+  // klsh: keyboard shortcut shown next to the label
+  hint?: string;
   disabled?: boolean;
 }
 
 export const MenuItem = React.forwardRef<
   HTMLButtonElement,
   MenuItemProps & React.ButtonHTMLAttributes<HTMLButtonElement>
->(({ label, disabled, ...props }, forwardedRef) => {
+>(({ label, hint, disabled, ...props }, forwardedRef) => {
   const menu = useContext(MenuContext);
   const item = useListItem({ label: disabled ? null : label });
   const tree = useFloatingTree();
@@ -268,6 +270,7 @@ export const MenuItem = React.forwardRef<
       })}
     >
       {label}
+      {hint && <small>{hint}</small>}
     </button>
   );
 });

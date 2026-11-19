@@ -66,7 +66,7 @@ tirar. Elas somem quando esvaziam.
 -- data/equipment.lua
 backpacks = {
     backpack_medium = {
-        grid = { 6, 5 },       -- espaço em células
+        grid = { 8, 4 },       -- espaço em células (8 de largura alinha com os bolsos na tela)
         slots = 15,            -- só usado com a grade desligada
         maxWeight = 20000,     -- gramas que a mochila aguenta
         reduction = 0.3,       -- 0.3 = o conteúdo pesa 30% menos no inventário principal
@@ -326,3 +326,22 @@ fromVehicle = true,       -- de dentro do veículo, com vidro ou porta abertos a
 - Errou ou não coube: o item vira um drop ao lado.
 - **De dentro do veículo:** qualquer banco, desde que haja uma abertura ao lado: vidro abaixado ou
   quebrado, porta aberta, porta arrancada ou veículo sem porta (moto, buggy). O item sai por esse lado.
+
+## Interface (tela do inventário)
+
+A tela tem três zonas: à esquerda o que o jogador carrega (bolsos e mochila vestida), no centro o
+personagem (roupas, atalhos, carteira e quantidade) e à direita o inventário aberto com o chão embaixo.
+
+- **Larguras que alinham a tela:** bolsos e mochilas com 8 células de largura (`data/grid.lua` → `player`,
+  `data/equipment.lua` → `backpacks.<item>.grid`); chão com 10 (`data/grid.lua` → `drop`), a mesma
+  largura padrão de porta-malas e baús (`width`). Outros valores funcionam; a grade só fica mais
+  estreita que a coluna.
+- **Textos:** `locales/<idioma>.json`, chaves `ui_*` (abas, rótulos, dicas do rodapé). `ui_decimal` e
+  `ui_thousands` definem os separadores dos números.
+- **Abas reservadas** (Saúde, Crafting, Habilidades): aparecem apagadas e não fazem nada. Para
+  escondê-las, esvazie a lista `RESERVED` em `web/src/components/inventory/Chrome.tsx` e recompile.
+- **Cores e tamanhos:** variáveis `--k-*` e `--grid-cell` no bloco "interface v2" de
+  `web/src/index.scss`. Tudo é medido em `--u` (um centésimo da largura da área 16:9).
+- **Atalhos na tela:** arrastar para fora dos inventários larga no chão; arrastar para o personagem
+  veste (roupa, colete, mochila) ou usa (os outros itens); Shift ao arrastar leva metade; o campo
+  Quantidade vale para arrastar, mover rápido (Ctrl + clique), soltar e carteira.
