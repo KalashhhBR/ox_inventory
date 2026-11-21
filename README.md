@@ -112,6 +112,7 @@ Os `exports` do original continuam existindo. O [INTEGRATION.md](./INTEGRATION.m
 - Prisão: use `ConfiscateInventory(source, { discard = { 'armour' } })` e `ReturnInventory(source)`. Quem copia a lista de itens e chama `ClearInventory` faz o preso perder mochila e colete.
 - `ClearInventory` em jogador leva também a mochila vestida e o colete; a roupa fica.
 - Arremesso: `exports.ox_inventory:SetThrowBonus(source, valor)` soma chance de acertar lixeira ou porta-malas.
+- Lojas e entregas: `CanCarryItems` (a lista inteira cabe?) e `AddItemToPlayer` (bolsos e depois mochila, sem excedente no chão).
 
 ## Comandos
 

@@ -18,7 +18,7 @@ const RightInventory: React.FC = () => {
   return (
     <InventoryGrid
       inventory={rightInventory}
-      label={ground ? Locale.ui_ground || 'Ground' : undefined}
+      label={ground && !rightInventory.named ? Locale.ui_ground || 'Ground' : undefined}
       hideWallet={searching}
     />
   );

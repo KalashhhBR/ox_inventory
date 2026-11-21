@@ -90,6 +90,28 @@ local ok, reason = exports.ox_inventory:SearchPlayer(source, target, {
 - Prisão: use `ConfiscateInventory` na entrada e `ReturnInventory` na saída.
 - Não guarde número de slot entre chamadas esperando que seja uma posição.
 
+## Entregas e inventários de outros scripts (0.25.0 a 0.27.0)
+
+Exports de server pensados para scripts de loja, recompensa e entrega.
+
+```lua
+-- A lista inteira cabe? Nada é adicionado. Com backpack = true, num jogador, conta bolsos e depois
+-- a mochila vestida, como AddItemToPlayer entrega.
+local fits = exports.ox_inventory:CanCarryItems(source, {
+    { name = 'water', count = 3 },
+    { name = 'WEAPON_PISTOL', count = 1, metadata = { registered = true } },
+}, { backpack = true })
+
+-- Entrega o que couber: bolsos primeiro e, com backpack = true, a mochila vestida. Nunca joga no chão.
+local inPockets, inBackpack = exports.ox_inventory:AddItemToPlayer(source, 'water', 3, nil, { backpack = true })
+```
+
+- `CanCarryItems(inv, lista, opções?)`: `CanCarryItem` responde por um item sozinho; perguntar item por item pode dizer "cabe" para uma lista que não cabe inteira. A lista é colocada na ordem dada (ponha os itens maiores primeiro).
+- `AddItemToPlayer(source, item, count, metadata?, opções?)`: devolve quantas unidades foram para os bolsos e quantas para a mochila; o que não coube **não foi adicionado** e fica por conta de quem chamou. Respeita peso, lista de itens aceitos pela mochila e a redução de peso dela. Falha devolve `false, motivo` (`invalid_inventory`, `invalid_item`, `invalid_count`).
+- `SetAttachedInventory(source, invId | nil)`: anexa um inventário (não jogador, não drop) ao jogador. Enquanto existir, ele é a primeira página da seção do chão quando o jogador tem outro inventário aberto. Quem pode mover o quê continua sendo decisão de quem criou o inventário, por hooks.
+- `SealInventory(invId, lacrado, rótulo?)`: inventário lacrado só entrega; o que se tenta pôr nele cai no chão ao lado, e drops novos não se juntam a ele. Com `rótulo`, um drop aparece com esse nome em vez de "Chão".
+- `SetDropExpiry(dropId, tempo | nil)`: validade fixa (horário do `os.time()`) para um drop.
+
 ## Interface (0.24.0)
 
 - **Teclas com o inventário aberto:** a interface usa Ctrl, Shift, Alt e R. Resources que usam essas teclas (agachar, por exemplo) devem ignorar o comando quando `LocalPlayer.state.invOpen` for verdadeiro; esse estado já existe no original.

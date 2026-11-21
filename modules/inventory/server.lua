@@ -1540,6 +1540,69 @@ function Inventory.CanCarryItem(inv, item, count, metadata)
 end
 exports('CanCarryItem', Inventory.CanCarryItem)
 
+---klsh: whether a whole list of items fits together. `CanCarryItem` answers for one item alone, so
+---asking it once per item says yes to a list that does not fit as a whole. The list is placed in the
+---given order, like consecutive `AddItem` calls. Nothing is added.
+---With `options.backpack` on a player, what does not fit in the pockets is tried in the worn backpack,
+---as `AddItemToPlayer` delivers it.
+---@param inv inventory
+---@param list { name: string, count?: number, metadata?: table | string }[]
+---@param options? { backpack?: boolean }
+---@return boolean? canCarry
+function Inventory.CanCarryItems(inv, list, options)
+	inv = Inventory(inv) --[[@as OxInventory]]
+
+	if not inv?.slots or type(list) ~= 'table' then return end
+
+	local entries, weight = {}, 0
+
+	for i = 1, #list do
+		local entry = list[i]
+		local item = type(entry) == 'table' and Items(entry.name)
+		local count = item and math.floor(tonumber(entry.count) or 1)
+
+		if not item or count < 1 then return false end
+
+		local metadata = type(entry.metadata) == 'table' and entry.metadata or { type = entry.metadata or nil }
+
+		entries[i] = { item = item, count = count, metadata = metadata }
+		weight += (metadata.weight or item.weight) * count
+	end
+
+	if inv.grid and inv.player and type(options) == 'table' and options.backpack then
+		return Equipment.canCarryAll(inv, entries)
+	end
+
+	if inv.weight + weight > inv.maxWeight then return false end
+	if inv.grid then return Grid.canCarryAll(inv, entries) end
+
+	-- no grid: one slot per new stack (or per unit when the item does not stack)
+	local needed, opened, empty = 0, {}
+
+	for i = 1, #entries do
+		local entry = entries[i]
+		local itemSlots, _, emptySlots = Inventory.GetItemSlots(inv, entry.item, entry.metadata)
+
+		if not itemSlots then return false end
+
+		empty = emptySlots
+
+		if not entry.item.stack then
+			needed += entry.count
+		elseif not next(itemSlots) then
+			local key = ('%s:%s'):format(entry.item.name, json.encode(entry.metadata, { sort_keys = true }))
+
+			if not opened[key] then
+				opened[key] = true
+				needed += 1
+			end
+		end
+	end
+
+	return needed <= (empty or 0)
+end
+exports('CanCarryItems', Inventory.CanCarryItems)
+
 ---@param inv inventory
 ---@param item table | string
 function Inventory.CanCarryAmount(inv, item)
@@ -1634,6 +1697,43 @@ end
 AddEventHandler('ox_inventory:customDrop', CustomDrop)
 exports('CustomDrop', CustomDrop)
 
+---klsh: gives a drop a fixed lifetime. Until that time the cleanup cron leaves it alone, whatever its
+---activity; from then on it is removed as soon as nobody has it open. nil goes back to the normal rule.
+---@param dropId string
+---@param time? number os.time at which the drop may be removed
+---@return boolean
+exports('SetDropExpiry', function(dropId, time)
+	local inv = Inventories[dropId]
+
+	if not inv or inv.type ~= 'drop' or (time ~= nil and type(time) ~= 'number') then return false end
+
+	inv.klshKeepUntil = time
+
+	return true
+end)
+
+---klsh: seals an inventory (drop, stash): items can be taken out of it but never put in. What a player
+---tries to move into it goes to the ground next to them, and dropped items never merge into it.
+---@param invId string
+---@param sealed? boolean
+---@param label? string
+---@return boolean
+exports('SealInventory', function(invId, sealed, label)
+	local inv = Inventories[invId]
+
+	if not inv or inv.player then return false end
+
+	inv.klshSealed = sealed ~= false or nil
+
+	-- a name of its own: a drop is shown with it instead of "Ground"
+	if type(label) == 'string' and label ~= '' then
+		inv.label = label
+		inv.klshNamed = true
+	end
+
+	return true
+end)
+
 exports('CreateDropFromPlayer', function(playerId)
 	local playerInventory = Inventory(playerId)
 
@@ -1709,7 +1809,8 @@ local function klshFindMergeDrop(source, coords, item, count, metadata, weight)
 	for i = 1, #candidates do
 		local inventory = Inventories[candidates[i].id]
 
-		if inventory and inventory.type == 'drop' and inventory.grid and inventory.weight + weight <= inventory.maxWeight then
+		-- klsh: a sealed drop only gives, it never receives
+		if inventory and inventory.type == 'drop' and not inventory.klshSealed and inventory.grid and inventory.weight + weight <= inventory.maxWeight then
 			local plan, remaining = Grid.planAdd(inventory, item, count, metadata)
 
 			if remaining == 0 and #plan > 0 then return inventory end
@@ -1863,6 +1964,19 @@ lib.callback.register('ox_inventory:swapItems', function(source, data)
 	end
 
     if data.toType == 'inspect' or data.fromType == 'inspect' then return end
+
+    -- klsh: a sealed inventory only gives. What is moved into it lands on the ground next to the player instead
+    if toInventory.klshSealed and fromInventory ~= toInventory and data.toType ~= 'newdrop' then
+        local klshPed = GetPlayerPed(source)
+
+        if fromInventory.type == 'drop' or klshPed == 0 or GetVehiclePedIsIn(klshPed, false) ~= 0 then return false end
+
+        data.toType = 'newdrop'
+        data.toSlot, data.toX, data.toY, data.rotated = nil, nil, nil, nil
+        data.klshOriginal = nil
+        data.coords = GetEntityCoords(klshPed)
+        data.instance = Player(source).state.instance
+    end
 
     -- klsh: slots sent by the client are checked against the grid (range, wallet, stack limit)
     local klshAllowed, klshReason = Grid.preSwap(playerInventory, fromInventory, toInventory, data)
@@ -2690,7 +2804,7 @@ local function saveInventories(clearInventories)
         if inv.klshKeepUntil and time >= inv.klshKeepUntil and not next(inv.openedBy) then
             -- klsh: an overflow drop lasts a fixed time, whatever its activity
             Inventory.Remove(inv)
-        elseif not inv.klshKeepUntil and not inv.open and not inv.player and not (inv.klshLinkedTo and Inventories[inv.klshLinkedTo]) and not (inv.type == 'drop' and next(inv.openedBy)) then
+        elseif not inv.klshKeepUntil and not inv.open and not inv.player and not (inv.klshLinkedTo and Inventories[inv.klshLinkedTo]) and not (inv.klshAttachedTo and Inventories[inv.klshAttachedTo] and Inventories[inv.klshAttachedTo].klshAttachedId == inv.id) and not (inv.type == 'drop' and next(inv.openedBy)) then
             -- clear inventory from memory if unused for x minutes, or on entity/netid mismatch
             if inv.type == 'glovebox' or inv.type == 'trunk' then
                 if NetworkGetEntityFromNetworkId(inv.netid) ~= inv.entityId then

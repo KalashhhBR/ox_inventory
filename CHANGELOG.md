@@ -11,6 +11,34 @@ Cada versão traz **tudo o que mudou desde a versão anterior**, sempre nestas q
 
 Seção sem itens aparece como "Nada nesta versão".
 
+## 0.27.0 (2026-11-21)
+
+Mudanças desde a 0.24.1.
+
+### Adicionado
+
+- **Fontes dentro do resource:** Inter, Rajdhani e Roboto vão junto com a interface (`web/build/*.woff2`); a tela não busca mais nada na internet.
+- **Exports para scripts de loja e entrega** (detalhes no `INTEGRATION.md`):
+  - `CanCarryItems`: responde se uma lista inteira de itens cabe, contando opcionalmente a mochila vestida.
+  - `AddItemToPlayer`: entrega em bolsos e depois na mochila vestida, sem nunca jogar excedente no chão.
+  - `SetAttachedInventory`: um inventário de outro script aparece junto do chão quando o jogador abre um porta-malas ou baú.
+  - `SealInventory`: inventário de onde só sai item, com nome próprio quando é um drop.
+  - `SetDropExpiry`: prazo fixo para um drop.
+- Limitações das lixeiras e do menu de contexto documentadas no `CONFIG.md`.
+
+### Removido
+
+- Links do Google Fonts na interface.
+
+### Ajuste
+
+- A seção do chão ganha uma página a mais quando há um inventário anexado ao jogador.
+- Um drop com nome próprio mostra esse nome no lugar de "Chão".
+
+### Bugs consertados
+
+Nada nesta versão.
+
 ## 0.24.1 (2026-11-18)
 
 Mudanças desde a 0.22.1.

@@ -323,6 +323,10 @@ fromVehicle = true,       -- de dentro do veículo, com vidro ou porta abertos a
 - **Chance de cair dentro** = `base` − `perMeter` × metros arremessados − `perKg` × quilos, nunca abaixo
   de `min`. Exemplo: garrafa de 500 g a 5 m = 62%; rifle de 4 kg a 5 m = 41%.
 - **Porta-malas:** precisa estar aberto e destrancado. **Lixeira:** as mesmas que podem ser revistadas.
+- **Lixeiras que valem como alvo:** só as que existem em rede (`dumpster<netid>`, o modo padrão do ox). Lixeira
+  do mapa que não existe em rede não serve de alvo (o item cai ao lado) e também não abre para revistar. Com
+  `inventory:networkdumpsters` ligado (lixeiras por coordenada), **nenhuma** lixeira serve de alvo nesta versão;
+  o porta-malas continua valendo.
 - Errou ou não coube: o item vira um drop ao lado.
 - **De dentro do veículo:** qualquer banco, desde que haja uma abertura ao lado: vidro abaixado ou
   quebrado, porta aberta, porta arrancada ou veículo sem porta (moto, buggy). O item sai por esse lado.
@@ -345,3 +349,8 @@ personagem (roupas, atalhos, carteira e quantidade) e à direita o inventário a
 - **Atalhos na tela:** arrastar para fora dos inventários larga no chão; arrastar para o personagem
   veste (roupa, colete, mochila) ou usa (os outros itens); Shift ao arrastar leva metade; o campo
   Quantidade vale para arrastar, mover rápido (Ctrl + clique), soltar e carteira.
+- **Fontes:** Inter, Rajdhani e Roboto vão junto com a NUI (`web/build/*.woff2`, subconjunto latino); a tela
+  não depende de internet. Para trocar, edite `web/src/fonts.css` e as variáveis `$kHead`/`$kBody` de
+  `web/src/index.scss` e recompile.
+- **Menu de contexto** (botão direito): só nos bolsos e na carteira. Na mochila, no chão e no inventário
+  aberto, use arrastar, Ctrl + clique (mover rápido) e o campo Quantidade.

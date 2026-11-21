@@ -340,6 +340,37 @@ local function linkGround(playerInv, dropId)
     return drop
 end
 
+---klsh: an inventory another resource attached to this player (SetAttachedInventory). While it exists it
+---takes the place of the ground section; the drop logic above is left untouched.
+---@param playerInv OxInventory
+---@return OxInventory?
+local function getAttached(playerInv)
+    local inv = playerInv.klshAttachedId and Inventory.GetLoaded(playerInv.klshAttachedId)
+
+    return inv and inv.klshAttachedTo == playerInv.id and inv or nil
+end
+
+---@param playerInv OxInventory
+---@return OxInventory? attached the attached inventory, only while it is the section on screen
+local function shownAttached(playerInv)
+    return playerInv.klshAttachedShown and getAttached(playerInv) or nil
+end
+
+---The attached inventory leaves the screen. The player stops observing it, unless it is also the
+---inventory opened on the right (then the regular open owns that entry).
+---@param playerInv OxInventory
+local function hideAttached(playerInv)
+    if not playerInv.klshAttachedShown then return end
+
+    playerInv.klshAttachedShown = nil
+
+    local inv = playerInv.klshAttachedId and Inventory.GetLoaded(playerInv.klshAttachedId)
+
+    if inv and playerInv.open ~= inv.id then
+        inv.openedBy[playerInv.id] = nil
+    end
+end
+
 ---@param playerInv OxInventory
 ---@return string[] dropIds drops inside the configured distance and in the player's instance, nearest first
 local function nearbyDrops(playerInv)
@@ -378,23 +409,57 @@ local function findNearestDrop(playerInv)
     return nearbyDrops(playerInv)[1]
 end
 
+---klsh: the attached inventory, when it may be a page of the ground section (it is not the one on the right).
+---@param playerInv OxInventory
+---@return OxInventory?
+local function pageAttached(playerInv)
+    local attached = getAttached(playerInv)
+
+    return attached and playerInv.open ~= attached.id and attached or nil
+end
+
+---klsh: puts the attached inventory on screen as the first page of the ground section.
+---@param playerInv OxInventory
+---@param attached OxInventory
+---@return table payload
+local function showAttached(playerInv, attached)
+    linkGround(playerInv, nil)
+    attached.openedBy[playerInv.id] = true
+    playerInv.klshAttachedShown = true
+
+    local pages = #nearbyDrops(playerInv) + 1
+
+    return {
+        nav = pages > 1 and { index = 1, count = pages } or nil,
+        id = attached.id,
+        type = data.groundType,
+        label = attached.label,
+        slots = attached.slots,
+        grid = Inventory.Grid.payload(attached),
+        maxWeight = attached.maxWeight,
+        items = attached.items,
+    }
+end
+
 ---@param playerInv OxInventory
 ---@return table payload ground section for the NUI: the linked drop, or an empty area for a new drop
 local function getGroundPayload(playerInv)
     local drop = getGround(playerInv)
     local reach = nearbyDrops(playerInv)
     local index = 0
+    -- klsh: an attached inventory is one more page, before the drops
+    local extra = pageAttached(playerInv) and 1 or 0
 
     for i = 1, #reach do
         if drop and reach[i] == drop.id then index = i end
     end
 
     return {
-        -- more than one drop within reach: the NUI lets the player go through them
-        nav = #reach > 1 and { index = index, count = #reach } or nil,
+        -- more than one page within reach: the NUI lets the player go through them
+        nav = #reach + extra > 1 and { index = index + extra, count = #reach + extra } or nil,
         id = drop and drop.id or 'newground',
         type = data.groundType,
-        label = locale('equipment_ground'),
+        label = drop and drop.klshNamed and drop.label or locale('equipment_ground'), -- klsh: a named drop keeps its name
         slots = drop and drop.slots or shared.dropslots,
         grid = drop and Inventory.Grid.payload(drop) or shared.grid and { w = shared.grid.drop.w, h = shared.grid.drop.h } or nil,
         maxWeight = drop and drop.maxWeight or shared.dropweight,
@@ -412,13 +477,61 @@ function Equipment.groundPayload(playerInv, right)
     -- no ground from inside a vehicle (glovebox, trunk opened from the seat)
     if not data.groundDistance or inVehicle or not right or right == playerInv or right.type == 'drop' or right.type == 'shop' or right.player then
         linkGround(playerInv, nil)
+        hideAttached(playerInv)
         return
     end
 
+    -- klsh: an attached inventory is the first page of the section (unless it is the one opened on the right)
+    local attached = pageAttached(playerInv)
+
+    if attached then return showAttached(playerInv, attached) end
+
+    hideAttached(playerInv)
     linkGround(playerInv, findNearestDrop(playerInv))
 
     return getGroundPayload(playerInv)
 end
+
+---klsh: attaches an inventory to a player (or detaches with nil). While attached it is shown in place of
+---the ground section whenever the player has another inventory open, and the cleanup cron keeps it loaded.
+---Nothing here decides who may move what: the resource that owns the inventory does that with hooks.
+---@param source number
+---@param invId? string
+---@return boolean
+local function setAttachedInventory(source, invId)
+    local playerInv = Inventory.GetLoaded(source)
+
+    if not playerInv or not playerInv.player then return false end
+
+    local inv
+
+    if invId ~= nil then
+        inv = Inventory.GetLoaded(invId)
+
+        if not inv or inv.player or inv.type == 'drop' or inv == playerInv then return false end
+    end
+
+    local previous = playerInv.klshAttachedId and Inventory.GetLoaded(playerInv.klshAttachedId)
+
+    hideAttached(playerInv)
+
+    if previous and previous.klshAttachedTo == playerInv.id then previous.klshAttachedTo = nil end
+
+    playerInv.klshAttachedId = inv and inv.id or nil
+
+    if inv then inv.klshAttachedTo = playerInv.id end
+
+    -- with the screen open the section changes right away
+    local right = playerInv.open and playerInv.open ~= playerInv.id and Inventory.GetLoaded(playerInv.open)
+
+    if right then
+        TriggerClientEvent('ox_inventory:klsh:setGround', source, Equipment.groundPayload(playerInv, right) or false)
+    end
+
+    return true
+end
+
+exports('SetAttachedInventory', setAttachedInventory)
 
 ---The player asked for the next (or previous) drop within reach as the ground section.
 lib.callback.register('ox_inventory:klsh:cycleGround', function(source, step)
@@ -434,16 +547,29 @@ lib.callback.register('ox_inventory:klsh:cycleGround', function(source, step)
     if ped == 0 or GetVehiclePedIsIn(ped, false) ~= 0 then return end
 
     local reach = nearbyDrops(playerInv)
+    -- klsh: the attached inventory is page 1, the drops come after it
+    local attached = pageAttached(playerInv)
+    local extra = attached and 1 or 0
+    local pages = #reach + extra
 
-    if #reach == 0 then return end
+    if pages == 0 then return end
 
     local current = 0
 
-    for i = 1, #reach do
-        if reach[i] == playerInv.klshGroundId then current = i end
+    if shownAttached(playerInv) then
+        current = 1
+    else
+        for i = 1, #reach do
+            if reach[i] == playerInv.klshGroundId then current = i + extra end
+        end
     end
 
-    linkGround(playerInv, reach[(current - 1 + (step == -1 and -1 or 1)) % #reach + 1])
+    local target = (current - 1 + (step == -1 and -1 or 1)) % pages + 1
+
+    if attached and target == 1 then return showAttached(playerInv, attached) end
+
+    hideAttached(playerInv)
+    linkGround(playerInv, reach[target - extra])
 
     return getGroundPayload(playerInv)
 end)
@@ -452,6 +578,8 @@ end)
 ---@param playerInv OxInventory
 function Equipment.onClose(playerInv)
     if playerInv.klshGroundId then linkGround(playerInv, nil) end
+
+    hideAttached(playerInv) -- klsh
 
     local targetId = playerInv.klshSearching
 
@@ -522,7 +650,7 @@ end
 ---@param playerInv OxInventory
 ---@param swap table swapItems payload
 function Equipment.prepareGround(playerInv, swap)
-    if swap.toType == data.groundType and not getGround(playerInv) then
+    if swap.toType == data.groundType and not shownAttached(playerInv) and not getGround(playerInv) then
         swap.toType = 'newdrop'
     end
 end
@@ -543,6 +671,14 @@ function Equipment.onDropCreated(source, dropId, owner)
     local right = Inventory.GetLoaded(playerInv.open)
 
     if not right or right.type == 'drop' then return owner end
+
+    -- klsh: the section is showing an attached inventory: it stays, and gains the new drop as a page
+    local attached = shownAttached(playerInv)
+
+    if attached then
+        TriggerClientEvent('ox_inventory:klsh:setGround', source, showAttached(playerInv, attached))
+        return false
+    end
 
     linkGround(playerInv, dropId)
     TriggerClientEvent('ox_inventory:klsh:setGround', source, getGroundPayload(playerInv))
@@ -764,7 +900,7 @@ function Equipment.resolve(playerInv, invType)
     elseif invType == data.backpackType then
         return (Equipment.getBag(playerInv))
     elseif invType == data.groundType then
-        return getGround(playerInv)
+        return shownAttached(playerInv) or getGround(playerInv)
     elseif invType == 'otherequipment' or invType == 'otherbackpack' then
         local target = getSearchTarget(playerInv)
 
@@ -1248,7 +1384,13 @@ function Equipment.preSwap(playerInv, fromInv, toInv, swap)
         local invType, inv = i == 1 and swap.fromType or swap.toType, i == 1 and fromInv or toInv
 
         if invType == data.groundType then
-            if inv.id ~= playerInv.klshGroundId or inv.type ~= 'drop' then return false end
+            local attached = shownAttached(playerInv)
+
+            if attached then
+                if inv.id ~= attached.id then return false end
+            elseif inv.id ~= playerInv.klshGroundId or inv.type ~= 'drop' then
+                return false
+            end
         elseif invType == 'otherequipment' or invType == 'otherbackpack' then
             local target = getSearchTarget(playerInv)
 
@@ -1447,6 +1589,176 @@ lib.addCommand('klsh_inventory_remigrate', {
     local migrated = Equipment.ensureMigrated(playerInv, true)
 
     lib.logger(source, 'klsh_inventory_remigrate', ('remigrated equipment of %s (%s)'):format(playerInv.label, migrated and 'ok' or 'failed'))
+end)
+
+-- Deliveries by other resources (shops, rewards): pockets first, then the worn backpack. Nothing is
+-- dropped on the ground and nothing goes over the weight limits; what does not fit is left to the caller.
+
+---@param room number free weight
+---@param weight number weight of one unit
+---@param count number
+---@return number units that the free weight allows
+local function unitsByWeight(room, weight, count)
+    if weight <= 0 then return count end
+
+    return math.max(math.min(count, math.floor(room / weight)), 0)
+end
+
+---@param bagItem SlotWithItem the worn backpack
+---@param item table
+---@return boolean accepted same rules as moving an item into the backpack by hand
+local function bagAccepts(bagItem, item)
+    if Items.containers[item.name] then return false end
+
+    local container = Items.containers[bagItem.name]
+
+    if not container then return false end
+
+    return not ((container.whitelist and not container.whitelist[item.name]) or (container.blacklist and container.blacklist[item.name]))
+end
+
+---Whether a list fits in the pockets plus the worn backpack, placed in order like Equipment.addItem.
+---@param playerInv OxInventory grid inventory of a player
+---@param entries { item: table, count: number, metadata: table }[]
+---@return boolean
+function Equipment.canCarryAll(playerInv, entries)
+    local Grid = Inventory.Grid
+    local bag, bagItem = Equipment.getBag(playerInv)
+
+    if bag and not bag.grid then bag = nil end
+
+    local pockets = Grid.view(playerInv)
+    local pack = bag and Grid.view(bag)
+    local share = bag and (1 - (data.backpacks[bagItem.name].reduction or 0)) or 1
+    local carried, packed = playerInv.weight, bag and bag.weight or 0
+
+    for i = 1, #entries do
+        local entry = entries[i]
+        local weight = entry.metadata.weight or entry.item.weight or 0
+        local placed = Grid.place(pockets, entry.item, unitsByWeight(playerInv.maxWeight - carried, weight, entry.count), entry.metadata)
+        local rest = entry.count - placed
+
+        carried += placed * weight
+
+        if rest > 0 then
+            if not pack or not bagAccepts(bagItem, entry.item) then return false end
+            if unitsByWeight(bag.maxWeight - packed, weight, rest) < rest then return false end
+            if unitsByWeight(playerInv.maxWeight - carried, weight * share, rest) < rest then return false end
+            if Grid.place(pack, entry.item, rest, entry.metadata) < rest then return false end
+
+            packed += rest * weight
+            carried += rest * weight * share
+        end
+    end
+
+    return true
+end
+
+---Adds what fits: pockets first and, with `useBag`, the worn backpack after.
+---@param playerInv OxInventory grid inventory of a player
+---@param item table
+---@param count number
+---@param metadata? table
+---@param useBag? boolean
+---@return number inPockets, number inBackpack
+function Equipment.addItem(playerInv, item, count, metadata, useBag)
+    local Grid = Inventory.Grid
+    local weight = metadata and metadata.weight or item.weight or 0
+    local inPockets, inBackpack = 0, 0
+    local fit = unitsByWeight(playerInv.maxWeight - playerInv.weight, weight, count)
+
+    if fit > 0 then
+        local _, remaining = Grid.planAdd(playerInv, item, fit, metadata)
+
+        fit -= remaining
+    end
+
+    if fit > 0 and Grid.addItem(playerInv, item, fit, metadata, nil, false) then
+        inPockets = fit
+    end
+
+    local rest = count - inPockets
+
+    if rest < 1 or not useBag then return inPockets, inBackpack end
+
+    local bag, bagItem = Equipment.getBag(playerInv)
+
+    if not bag or not bag.grid or not bagAccepts(bagItem, item) then return inPockets, inBackpack end
+
+    local share = 1 - (data.backpacks[bagItem.name].reduction or 0)
+
+    fit = math.min(
+        unitsByWeight(bag.maxWeight - bag.weight, weight, rest),
+        unitsByWeight(playerInv.maxWeight - playerInv.weight, weight * share, rest)
+    )
+
+    if fit > 0 then
+        local _, remaining = Grid.planAdd(bag, item, fit, metadata)
+
+        fit -= remaining
+    end
+
+    if fit < 1 then return inPockets, inBackpack end
+
+    local success, response = Grid.addItem(bag, item, fit, metadata, nil, false)
+
+    if not success then return inPockets, inBackpack end
+
+    inBackpack = fit
+
+    -- the carried weight only changes here, so the slots go out again with the right weight
+    Equipment.recalcBag(playerInv)
+
+    local updates = {}
+
+    if response.slot then
+        updates[1] = { item = response, inventory = bag.id }
+    else
+        for i = 1, #response do updates[i] = { item = response[i], inventory = bag.id } end
+    end
+
+    bag:syncSlotsWithClients(updates)
+    refreshSearchers(playerInv)
+
+    return inPockets, inBackpack
+end
+
+---Gives an item to a player without ever dropping it on the ground: fills the pockets and, with
+---`options.backpack`, the worn backpack. Returns how many units went to each; the rest was not added.
+---@param source number
+---@param item string
+---@param count number
+---@param metadata? table | string
+---@param options? { backpack?: boolean }
+---@return number | false inPockets, number | string inBackpack
+exports('AddItemToPlayer', function(source, item, count, metadata, options)
+    local playerInv = Inventory(source)
+
+    if not playerInv or not playerInv.player then return false, 'invalid_inventory' end
+
+    item = type(item) == 'string' and Items(item) or nil
+
+    if not item then return false, 'invalid_item' end
+
+    count = math.floor(tonumber(count) or 0)
+
+    if count < 1 then return false, 'invalid_count' end
+    if type(metadata) ~= 'table' then metadata = metadata and { type = metadata } or nil end
+
+    if not playerInv.grid then
+        if not Inventory.CanCarryItem(playerInv, item, count, metadata) then return 0, 0 end
+
+        return Inventory.AddItem(playerInv, item, count, metadata) and count or 0, 0
+    end
+
+    local inPockets, inBackpack = Equipment.addItem(playerInv, item, count, metadata, type(options) == 'table' and options.backpack == true)
+    local resource = GetInvokingResource()
+
+    if resource and inPockets + inBackpack > 0 then
+        lib.logger(playerInv.owner, 'addItem', ('"%s" added %sx %s to "%s" (%s in the backpack)'):format(resource, inPockets + inBackpack, item.name, playerInv.label, inBackpack))
+    end
+
+    return inPockets, inBackpack
 end)
 
 ---@param inv number | string player source or inventory

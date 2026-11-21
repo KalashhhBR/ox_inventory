@@ -5,7 +5,7 @@ game 'gta5'
 name 'ox_inventory'
 author 'Overextended'
 version '2.48.1'
-klsh_version '0.24.1' -- klsh: fork version (SemVer), upstream base above
+klsh_version '0.27.0' -- klsh: fork version (SemVer), upstream base above
 repository 'https://github.com/KalashhhBR/ox_inventory' -- klsh: fork of https://github.com/overextended/ox_inventory
 description 'Grid inventory with clothing as items (klsh fork of ox_inventory)'
 
@@ -40,6 +40,7 @@ files {
     'web/build/index.html',
     'web/build/*.js', -- klsh: flat build output
     'web/build/*.css',
+    'web/build/*.woff2', -- klsh: fonts bundled with the NUI (0.24.2)
     'web/images/*.png',
     'modules/**/shared.lua',
     'modules/**/client.lua',

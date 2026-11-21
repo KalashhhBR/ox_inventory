@@ -314,6 +314,7 @@ local function openInventory(source, invType, data, ignoreSecurityChecks)
     }, right and {
         id = right.id,
         label = right.player and '' or right.label,
+        named = right.klshNamed, -- klsh: a drop with a name of its own (not shown as "Ground")
         type = right.player and 'otherplayer' or right.type,
         slots = right.slots,
         grid = Inventory.Grid.payload(right), -- klsh

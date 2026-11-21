@@ -300,6 +300,75 @@ function Grid.canCarry(inv, item, count, metadata)
     return remaining == 0
 end
 
+---Whether a whole list fits together, placed in the given order like consecutive deliveries.
+---Nothing is written: every placement goes to a copy of the items.
+---@param inv table
+---@param entries { item: table, count: number, metadata?: table }[]
+---@return boolean
+function Grid.canCarryAll(inv, entries)
+    local view = Grid.view(inv)
+
+    for i = 1, #entries do
+        local entry = entries[i]
+
+        if Grid.place(view, entry.item, entry.count, entry.metadata) < entry.count then return false end
+    end
+
+    return true
+end
+
+---A copy of the inventory that Grid.place can fill without touching the real one.
+---@param inv table
+---@return table view
+function Grid.view(inv)
+    local items = {}
+
+    for slot, slotData in pairs(inv.items) do items[slot] = slotData end
+
+    return setmetatable({ items = items }, { __index = inv })
+end
+
+---Puts up to `count` units in a view (see Grid.view), as Grid.addItem would in the real inventory.
+---@param view table
+---@param item table
+---@param count number
+---@param metadata? table
+---@return number placed units that found a place
+function Grid.place(view, item, count, metadata)
+    if count < 1 then return 0 end
+
+    local plan, remaining = Grid.planAdd(view, item, count, metadata)
+
+    if remaining > 0 then
+        count -= remaining
+
+        if count < 1 then return 0 end
+
+        plan, remaining = Grid.planAdd(view, item, count, metadata)
+
+        if remaining > 0 then return 0 end
+    end
+
+    local items = view.items
+
+    for i = 1, #plan do
+        local step = plan[i]
+        local current = items[step.slot]
+
+        items[step.slot] = {
+            name = item.name,
+            slot = step.slot,
+            count = (current and current.count or 0) + step.count,
+            metadata = current and current.metadata or metadata,
+            x = current and current.x or step.x,
+            y = current and current.y or step.y,
+            rotated = current and current.rotated or step.rotated,
+        }
+    end
+
+    return count
+end
+
 -- position handed to the next Inventory.SetSlot that creates a slot (set by Grid.setSlot)
 local pendingPosition
 

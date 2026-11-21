@@ -41,3 +41,8 @@ What was modified is documented in [CHANGELOG.md](./CHANGELOG.md) and [README.md
 
 Equipment slot icons (`web/images/clothing_*.png`) are rendered from Material Design Icons by
 Pictogrammers (https://pictogrammers.com, Apache 2.0), except `clothing_pants.png` (drawn for this fork).
+
+The interface fonts bundled in `web/build/*.woff2` (Inter, Rajdhani and Roboto, Latin subset) come from the
+Fontsource packages (`@fontsource/inter`, `@fontsource/rajdhani`, `@fontsource/roboto`) and are licensed under the
+SIL Open Font License 1.1 (https://openfontlicense.org). Inter: The Inter Project Authors. Rajdhani: Indian Type
+Foundry. Roboto: The Roboto Project Authors.

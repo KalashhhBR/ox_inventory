@@ -32,6 +32,8 @@ export type Inventory = {
   grid?: { w: number; h: number; wallet?: number };
   // klsh: ground with more than one drop within reach (index 0 = none of them shown)
   nav?: { index: number; count: number };
+  // klsh: a drop with a name of its own (not shown as "Ground")
+  named?: boolean;
 };
 
 export type EquipmentCategory = {

@@ -5,6 +5,7 @@ import { DndProvider } from 'react-dnd';
 import { TouchBackend } from 'react-dnd-touch-backend';
 import { store } from './store';
 import App from './App';
+import './fonts.css'; // klsh: local fonts (no Google Fonts)
 import './index.scss';
 import { ItemNotificationsProvider } from './components/utils/ItemNotifications';
 import { isEnvBrowser } from './utils/misc';
